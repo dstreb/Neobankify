@@ -23,7 +23,7 @@ export function VoiceButton({ voiceState, onPressIn, onPressOut }: VoiceButtonPr
   useEffect(() => {
     if (voiceState === 'listening') {
       // Start pulsing animation
-      Animated.loop(
+      const loop = Animated.loop(
         Animated.sequence([
           Animated.parallel([
             Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
@@ -34,7 +34,13 @@ export function VoiceButton({ voiceState, onPressIn, onPressOut }: VoiceButtonPr
             Animated.timing(opacityAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
           ]),
         ]),
-      ).start();
+      );
+      loop.start();
+      return () => {
+        loop.stop();
+        pulseAnim.setValue(1);
+        opacityAnim.setValue(0);
+      };
     } else {
       pulseAnim.setValue(1);
       opacityAnim.setValue(0);
