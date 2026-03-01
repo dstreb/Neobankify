@@ -43,10 +43,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async function checkAuth() {
       try {
         const token = await storage.getAccessToken();
-        const onboardingComplete = await storage.getOnboardingComplete();
 
         if (token) {
           const response = await authApi.getProfile();
+          const onboardingComplete = await storage.getOnboardingComplete(response.data.id);
           setState({
             user: response.data,
             isAuthenticated: true,
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await storage.setRefreshToken(response.data.refreshToken);
 
     const profileResponse = await authApi.getProfile();
-    const onboardingComplete = await storage.getOnboardingComplete();
+    const onboardingComplete = await storage.getOnboardingComplete(profileResponse.data.id);
 
     setState({
       user: profileResponse.data,
@@ -128,9 +128,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const completeOnboarding = useCallback(async () => {
-    await storage.setOnboardingComplete(true);
+    const userId = state.user?.id;
+    if (!userId) {
+      return;
+    }
+    await storage.setOnboardingComplete(userId, true);
     setState((prev) => ({ ...prev, isOnboardingComplete: true }));
-  }, []);
+  }, [state.user?.id]);
 
   const value = useMemo(
     () => ({ ...state, login, register, logout, refreshUser, completeOnboarding }),

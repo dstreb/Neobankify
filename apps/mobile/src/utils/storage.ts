@@ -9,9 +9,14 @@ const KEYS = {
   REFRESH_TOKEN: 'neobank_refresh_token',
   TENANT_ID: 'neobank_tenant_id',
   BIOMETRIC_ENABLED: 'neobank_biometric_enabled',
-  ONBOARDING_COMPLETE: 'neobank_onboarding_complete',
   USER_PREFERENCES: 'neobank_user_preferences',
 } as const;
+
+const ONBOARDING_COMPLETE_PREFIX = 'neobank_onboarding_complete';
+
+function onboardingCompleteKey(userId: string): string {
+  return `${ONBOARDING_COMPLETE_PREFIX}:${userId}`;
+}
 
 export async function getAccessToken(): Promise<string | null> {
   return SecureStore.getItemAsync(KEYS.ACCESS_TOKEN);
@@ -46,19 +51,18 @@ export async function setBiometricEnabled(enabled: boolean): Promise<void> {
   await SecureStore.setItemAsync(KEYS.BIOMETRIC_ENABLED, String(enabled));
 }
 
-export async function getOnboardingComplete(): Promise<boolean> {
-  const value = await SecureStore.getItemAsync(KEYS.ONBOARDING_COMPLETE);
+export async function getOnboardingComplete(userId: string): Promise<boolean> {
+  const value = await SecureStore.getItemAsync(onboardingCompleteKey(userId));
   return value === 'true';
 }
 
-export async function setOnboardingComplete(complete: boolean): Promise<void> {
-  await SecureStore.setItemAsync(KEYS.ONBOARDING_COMPLETE, String(complete));
+export async function setOnboardingComplete(userId: string, complete: boolean): Promise<void> {
+  await SecureStore.setItemAsync(onboardingCompleteKey(userId), String(complete));
 }
 
 export async function clearAllTokens(): Promise<void> {
   await SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN);
   await SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN);
-  await SecureStore.deleteItemAsync(KEYS.ONBOARDING_COMPLETE);
 }
 
 export async function clearAll(): Promise<void> {

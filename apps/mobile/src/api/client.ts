@@ -75,8 +75,9 @@ function createApiClient(): AxiosInstance {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            originalRequest.headers.Authorization = `Bearer ${String(token)}`;
           }
+          (originalRequest as Record<string, unknown>)._retry = true;
           return client(originalRequest);
         });
       }
