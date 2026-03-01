@@ -141,22 +141,46 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
   try {
     const userId = req.headers['x-user-id'] as string;
 
-    await db('user_cards')
-      .where({ user_id: userId, is_primary: true })
-      .update({ is_primary: false });
+    await db.transaction(async (trx) => {
+      // Verify target card exists before modifying any data
+      const targetCard = await trx('user_cards')
+        .where({ id: req.params.id, user_id: userId, status: 'active' })
+        .first();
 
-    await db('user_cards')
-      .where({ id: req.params.id, user_id: userId })
-      .update({ is_primary: true });
+      if (!targetCard) {
+        res.status(404).json({
+          type: 'https://api.neobank.io/errors/not-found',
+          title: 'Card Not Found',
+          status: 404,
+          detail: 'Card not found.',
+        });
+        return;
+      }
 
-    res.json({ success: true, data: { message: 'Primary card updated.' } });
+      // Unset existing primary cards
+      await trx('user_cards')
+        .where({ user_id: userId, is_primary: true })
+        .update({ is_primary: false });
+
+      // Set new primary
+      await trx('user_cards')
+        .where({ id: req.params.id, user_id: userId })
+        .update({ is_primary: true });
+    });
+
+    // Only send success if response hasn't been sent (404 case)
+    if (!res.headersSent) {
+      res.json({ success: true, data: { message: 'Primary card updated.' } });
+    }
   } catch (error) {
     logger.error('Failed to set primary card', { error: (error as Error).message });
-    res.status(500).json({
-      type: 'https://api.neobank.io/errors/internal',
-      title: 'Internal Error',
-      status: 500,
-      detail: 'Failed to set primary card.',
-    });
+    if (!res.headersSent) {
+      res.status(500).json({
+        type: 'https://api.neobank.io/errors/internal',
+        title: 'Internal Error',
+        status: 500,
+        detail: 'Failed to set primary card.',
+      });
+    }
   }
 });

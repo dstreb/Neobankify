@@ -220,12 +220,14 @@ class OrchestratorAgent:
         }
 
         tasks = []
+        task_agent_names = []
         for name in agent_names:
             agent = agent_map.get(name)
             if agent:
                 tasks.append(
                     self._invoke_agent_with_timeout(name, agent, event, user_features, tenant_config)
                 )
+                task_agent_names.append(name)
 
         if not tasks:
             return []
@@ -237,7 +239,7 @@ class OrchestratorAgent:
             if isinstance(result, Exception):
                 agent_results.append(
                     AgentResult(
-                        agent_type=agent_names[i],
+                        agent_type=task_agent_names[i],
                         success=False,
                         error=str(result),
                     )

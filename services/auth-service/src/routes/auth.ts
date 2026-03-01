@@ -69,7 +69,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       password_hash: passwordHash,
       kyc_status: 'pending',
       risk_profile: 'moderate',
-      goals: JSON.stringify({}),
+      goals: JSON.stringify([]),
       preferences: JSON.stringify({
         notificationFrequency: 'daily',
         autoSweepEnabled: false,

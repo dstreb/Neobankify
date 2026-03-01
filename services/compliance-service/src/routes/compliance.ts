@@ -49,8 +49,10 @@ complianceRouter.post('/alerts/:id/resolve', async (req: Request, res: Response)
     const actorId = req.headers['x-user-id'] as string;
     const { resolution, notes } = req.body;
 
+    const tenantId = req.headers['x-tenant-id'] as string;
+
     await db('compliance_alerts')
-      .where({ id: req.params.id })
+      .where({ id: req.params.id, tenant_id: tenantId })
       .update({
         status: 'resolved',
         resolution,
