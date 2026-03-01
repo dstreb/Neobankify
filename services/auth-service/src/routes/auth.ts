@@ -65,10 +65,8 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     await db('users').insert({
       id: userId,
       tenant_id: tenantId,
-      external_auth_id: userId,
       email,
       password_hash: passwordHash,
-      email_verified: false,
       kyc_status: 'pending',
       risk_profile: 'moderate',
       goals: JSON.stringify({}),

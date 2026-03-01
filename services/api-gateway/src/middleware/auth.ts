@@ -65,6 +65,7 @@ export const authMiddleware = (
     }
 
     req.userId = decoded.sub;
+    req.headers['x-user-id'] = decoded.sub;
 
     next();
   } catch (error) {

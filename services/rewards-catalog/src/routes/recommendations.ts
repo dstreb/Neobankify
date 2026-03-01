@@ -11,7 +11,7 @@ recommendationsRouter.get('/', async (req: Request, res: Response): Promise<void
     const userId = req.headers['x-user-id'] as string;
 
     const recommendations = await db('agent_decisions')
-      .where({ user_id: userId, status: 'recommended' })
+      .where({ user_id: userId, outcome: 'recommended' })
       .orderBy('created_at', 'desc')
       .limit(20);
 
@@ -69,8 +69,7 @@ recommendationsRouter.get('/:id', async (req: Request, res: Response): Promise<v
         confidenceScore: rec.confidence_score,
         inputFeatures: rec.input_features,
         guardrailsTriggered: rec.guardrails_triggered,
-        status: rec.status,
-        userAction: rec.user_action,
+        outcome: rec.outcome,
         createdAt: rec.created_at,
       },
     });
@@ -91,8 +90,8 @@ recommendationsRouter.post('/:id/accept', async (req: Request, res: Response): P
     const userId = req.headers['x-user-id'] as string;
 
     const updated = await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId, status: 'recommended' })
-      .update({ user_action: 'accepted', status: 'executed', updated_at: new Date() });
+      .where({ id: req.params.id, user_id: userId, outcome: 'recommended' })
+      .update({ outcome: 'executed' });
 
     if (!updated) {
       res.status(404).json({
@@ -123,8 +122,8 @@ recommendationsRouter.post('/:id/dismiss', async (req: Request, res: Response): 
     const userId = req.headers['x-user-id'] as string;
 
     await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId, status: 'recommended' })
-      .update({ user_action: 'dismissed', status: 'expired' });
+      .where({ id: req.params.id, user_id: userId, outcome: 'recommended' })
+      .update({ outcome: 'dismissed' });
 
     res.json({ success: true, data: { message: 'Recommendation dismissed.' } });
   } catch (error) {
@@ -147,8 +146,7 @@ recommendationsRouter.post('/:id/override', async (req: Request, res: Response):
     await db('agent_decisions')
       .where({ id: req.params.id, user_id: userId })
       .update({
-        user_action: 'overridden',
-        status: 'expired',
+        outcome: 'overridden',
         reasoning: db.raw("reasoning || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),
       });
 

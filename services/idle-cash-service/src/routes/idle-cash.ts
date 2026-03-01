@@ -47,7 +47,7 @@ idleCashRouter.get('/summary', async (req: Request, res: Response): Promise<void
       .where({ user_id: userId, status: 'active' });
 
     const totalDeployed = positions.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    const weightedApy = positions.length > 0
+    const weightedApy = positions.length > 0 && totalDeployed > 0
       ? positions.reduce((sum, p) => sum + parseFloat(p.amount) * parseFloat(p.apy), 0) / totalDeployed
       : 0;
     const projectedAnnualYield = totalDeployed * weightedApy;

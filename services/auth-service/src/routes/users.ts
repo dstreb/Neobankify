@@ -23,7 +23,7 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
 
     const user = await db('users')
       .where({ id: userId, tenant_id: tenantId })
-      .select('id', 'email', 'email_verified', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
+      .select('id', 'email', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
       .first();
 
     if (!user) {
@@ -41,7 +41,6 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
       data: {
         id: user.id,
         email: user.email,
-        emailVerified: user.email_verified,
         kycStatus: user.kyc_status,
         riskProfile: user.risk_profile,
         goals: user.goals,
@@ -123,7 +122,7 @@ userRouter.get('/me/goals', async (req: Request, res: Response): Promise<void> =
     const userId = req.headers['x-user-id'] as string;
 
     const goals = await db('user_goals')
-      .where({ user_id: userId, active: true })
+      .where({ user_id: userId, status: 'active' })
       .orderBy('priority', 'asc');
 
     res.json({
@@ -133,7 +132,7 @@ userRouter.get('/me/goals', async (req: Request, res: Response): Promise<void> =
         type: g.goal_type,
         parameters: g.parameters,
         priority: g.priority,
-        active: g.active,
+        status: g.status,
       })),
     });
   } catch (error) {
@@ -177,7 +176,7 @@ userRouter.post('/me/goals', async (req: Request, res: Response): Promise<void> 
       goal_type: parsed.data.type,
       parameters: JSON.stringify(parsed.data.parameters),
       priority: parsed.data.priority,
-      active: true,
+      status: 'active',
       created_at: new Date(),
     });
 
