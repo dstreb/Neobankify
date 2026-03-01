@@ -156,7 +156,10 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
   const clearConversation = useCallback(() => {
     conversationIdRef.current = null;
     setState({
-      messages: [WELCOME_MESSAGE, QUICK_START_TIPS],
+      messages: [
+        { ...WELCOME_MESSAGE, timestamp: new Date().toISOString() },
+        { ...QUICK_START_TIPS, timestamp: new Date().toISOString() },
+      ],
       conversationId: null,
       isTyping: false,
       voiceState: 'idle',

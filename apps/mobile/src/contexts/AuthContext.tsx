@@ -40,28 +40,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Check for existing session on mount
   useEffect(() => {
-    async function checkAuth() {
+    const checkSession = async () => {
       try {
         const token = await storage.getAccessToken();
-
-        if (token) {
-          const response = await authApi.getProfile();
-          const onboardingComplete = await storage.getOnboardingComplete(response.data.id);
-          setState({
-            user: response.data,
-            isAuthenticated: true,
-            isLoading: false,
-            isOnboardingComplete: onboardingComplete,
-          });
-        } else {
+        if (!token) {
           setState((prev) => ({ ...prev, isLoading: false }));
+          return;
         }
+        const response = await authApi.getProfile();
+        const onboardingComplete = await storage.getOnboardingComplete(response.data.id);
+        setState({
+          user: response.data,
+          isAuthenticated: true,
+          isLoading: false,
+          isOnboardingComplete: onboardingComplete,
+        });
       } catch {
         await storage.clearAllTokens();
-        setState((prev) => ({ ...prev, isLoading: false }));
+        setState({ user: null, isAuthenticated: false, isLoading: false, isOnboardingComplete: false });
       }
-    }
-    checkAuth();
+    };
+    checkSession();
   }, []);
 
   // Listen for session-expired events from the API client
