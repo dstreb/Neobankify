@@ -54,8 +54,8 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
         return;
       }
 
-      // Stop endless loadMore retries if the fetch fails
-      if (reset) {
+      // Only clear transactions on initial load failure, not pull-to-refresh
+      if (reset && transactions.length === 0) {
         setTransactions([]);
       }
       cursorRef.current = null;

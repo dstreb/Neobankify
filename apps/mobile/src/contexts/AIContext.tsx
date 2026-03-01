@@ -47,13 +47,16 @@ const QUICK_START_TIPS: ChatMessage = {
 };
 
 export function AIProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AIState>({
-    messages: [WELCOME_MESSAGE, QUICK_START_TIPS],
+  const [state, setState] = useState<AIState>(() => ({
+    messages: [
+      { ...WELCOME_MESSAGE, timestamp: new Date().toISOString() },
+      { ...QUICK_START_TIPS, timestamp: new Date().toISOString() },
+    ],
     conversationId: null,
     isTyping: false,
     voiceState: 'idle',
     error: null,
-  });
+  }));
 
   const isProcessingRef = useRef(false);
   const conversationIdRef = useRef<string | null>(null);
