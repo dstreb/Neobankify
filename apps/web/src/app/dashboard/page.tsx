@@ -176,7 +176,7 @@ export default function DashboardPage() {
                   <Sparkles className="mt-0.5 h-4 w-4 text-brand-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700">
-                      AI {rec.agentType.replace('_', ' ')} — {String((rec.decision as Record<string, unknown>).action)}
+                      AI {rec.agentType.replace(/_/g, ' ')} — {String((rec.decision as Record<string, unknown>).action)}
                     </p>
                     <div className="mt-1 flex items-center gap-2">
                       <Badge variant={outcomeVariant[rec.outcome]}>{rec.outcome}</Badge>

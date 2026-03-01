@@ -89,8 +89,8 @@ class ApiClient {
   // Users
   async getUsers(params?: { page?: number; limit?: number; search?: string }) {
     const query = new URLSearchParams();
-    if (params?.page) query.set('page', String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.page != null) query.set('page', String(params.page));
+    if (params?.limit != null) query.set('limit', String(params.limit));
     if (params?.search) query.set('search', params.search);
     return this.request<{ data: unknown[] }>(`/v1/users?${query.toString()}`);
   }
@@ -102,8 +102,8 @@ class ApiClient {
   // Transactions
   async getTransactions(params?: { page?: number; limit?: number; category?: string }) {
     const query = new URLSearchParams();
-    if (params?.page) query.set('page', String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.page != null) query.set('page', String(params.page));
+    if (params?.limit != null) query.set('limit', String(params.limit));
     if (params?.category) query.set('category', params.category);
     return this.request<{ data: unknown[] }>(`/v1/transactions?${query.toString()}`);
   }
@@ -143,8 +143,8 @@ class ApiClient {
   // Audit
   async getAuditLogs(params?: { page?: number; limit?: number }) {
     const query = new URLSearchParams();
-    if (params?.page) query.set('page', String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.page != null) query.set('page', String(params.page));
+    if (params?.limit != null) query.set('limit', String(params.limit));
     return this.request<{ data: unknown[] }>(`/v1/audit?${query.toString()}`);
   }
 
