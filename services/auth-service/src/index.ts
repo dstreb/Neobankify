@@ -3,6 +3,7 @@ import { authRouter } from './routes/auth';
 import { userRouter } from './routes/users';
 import { kycRouter } from './routes/kyc';
 import { logger } from './config/logger';
+import { connectKafka } from './config/kafka';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,6 +18,10 @@ app.use('/auth/kyc', kycRouter);
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'healthy', service: 'auth-service' });
+});
+
+connectKafka().catch(err => {
+  logger.error('Failed to connect Kafka producer', { error: (err as Error).message });
 });
 
 app.listen(PORT, () => {

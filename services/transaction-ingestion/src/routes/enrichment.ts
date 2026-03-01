@@ -73,8 +73,9 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
     const subcategory = mccMapping?.subcategory || 'uncategorized';
     const merchantNormalized = normalizeMerchantName(txn.merchant_name);
 
-    // Determine reward eligibility
-    const rewardEligible = !['cash_advance', 'balance_transfer', 'fee'].includes(category);
+    // Determine reward eligibility based on transaction type (not MCC category)
+    const txnType = (txn.transaction_type || '').toLowerCase();
+    const rewardEligible = !['cash_advance', 'balance_transfer', 'fee'].includes(txnType);
 
     // Confidence score based on enrichment quality
     let enrichmentConfidence = 0.5;
