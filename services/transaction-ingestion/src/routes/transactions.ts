@@ -141,6 +141,7 @@ transactionRouter.post('/ingest', async (req: Request, res: Response): Promise<v
     await db('transactions').insert({
       id: txnId,
       user_id: userId,
+      tenant_id: tenantId,
       account_id: accountId,
       provider_transaction_id: providerTransactionId,
       amount,

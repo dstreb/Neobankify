@@ -162,8 +162,21 @@ kycRouter.post('/webhook', async (req: Request, res: Response): Promise<void> =>
 
     const kycStatus = kycStatusMap[status] || 'pending';
 
-    await db('users')
+    // Look up the user by kyc_reference_id to get tenant context
+    const user = await db('users')
       .where({ kyc_reference_id: inquiryId })
+      .select('id', 'tenant_id')
+      .first();
+
+    if (!user) {
+      logger.warn('KYC webhook received for unknown inquiry', { inquiryId });
+      res.status(404).json({ error: 'Unknown inquiry ID' });
+      return;
+    }
+
+    // Update with tenant scoping to prevent cross-tenant manipulation
+    await db('users')
+      .where({ id: user.id, tenant_id: user.tenant_id, kyc_reference_id: inquiryId })
       .update({
         kyc_status: kycStatus,
         updated_at: new Date(),

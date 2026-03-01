@@ -66,7 +66,8 @@ rewardsRouter.get('/programs', async (req: Request, res: Response): Promise<void
         categoryRates: p.category_rates,
         pointValueCents: p.point_value_cents,
         annualFee: p.annual_fee,
-        activeOffers: p.active_offers,
+        signupBonus: p.signup_bonus,
+        isActive: p.is_active,
       })),
     });
   } catch (error) {
@@ -86,18 +87,26 @@ rewardsRouter.get('/offers', async (req: Request, res: Response): Promise<void> 
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Get user's cards and their associated offers
+    // Get user's cards and their associated reward programs
     const cards = await db('user_cards')
-      .where({ user_id: userId, status: 'active' })
+      .where({ 'user_cards.user_id': userId, 'user_cards.status': 'active' })
       .join('reward_programs', 'user_cards.reward_program_id', 'reward_programs.id')
-      .select('reward_programs.active_offers', 'user_cards.card_name');
+      .select(
+        'user_cards.card_name',
+        'reward_programs.name as program_name',
+        'reward_programs.category_rates',
+        'reward_programs.signup_bonus',
+      );
 
-    const offers = cards.flatMap(c =>
-      (c.active_offers || []).map((offer: Record<string, unknown>) => ({
-        ...offer,
+    // Return cards with their reward program details as "offers"
+    const offers = cards
+      .filter(c => c.signup_bonus)
+      .map(c => ({
         cardName: c.card_name,
-      }))
-    );
+        programName: c.program_name,
+        signupBonus: c.signup_bonus,
+        categoryRates: c.category_rates,
+      }));
 
     res.json({ success: true, data: offers });
   } catch (error) {
@@ -139,8 +148,7 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
         decision: d.decision,
         reasoning: d.reasoning,
         confidenceScore: d.confidence_score,
-        status: d.status,
-        userAction: d.user_action,
+        outcome: d.outcome,
         createdAt: d.created_at,
       })),
       meta: {
