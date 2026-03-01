@@ -93,9 +93,11 @@ export function LinkedAccountsScreen({ navigation }: ProfileScreenProps<'LinkedA
           <Text style={[styles.accountType, { color: colors.textSecondary }]}>
             {item.accountType.replace(/_/g, ' ')} &middot; ****{item.mask}
           </Text>
-          <Text style={[styles.syncTime, { color: colors.textTertiary }]}>
-            {item.accountType.replace(/_/g, ' ')}
-          </Text>
+          {item.lastSyncAt && (
+            <Text style={[styles.syncTime, { color: colors.textTertiary }]}>
+              Synced {formatRelativeTime(item.lastSyncAt)}
+            </Text>
+          )}
         </View>
         <View style={styles.accountBalance}>
           <Text style={[styles.balanceValue, { color: colors.textPrimary }]}>

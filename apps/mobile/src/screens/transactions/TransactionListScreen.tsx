@@ -25,6 +25,7 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
 
   const fetchTransactions = useCallback(async (reset = false) => {
     try {
+      setLoading(true);
       const params: Record<string, unknown> = { limit: 20 };
       if (!reset && cursor) {
         params.cursor = cursor;
@@ -50,7 +51,6 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
   }, [cursor, selectedCategory]);
 
   useEffect(() => {
-    setLoading(true);
     setTransactions([]);
     setCursor(null);
     fetchTransactions(true);

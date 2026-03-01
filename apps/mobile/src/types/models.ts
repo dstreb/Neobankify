@@ -116,6 +116,7 @@ export interface LinkedAccount {
   currentBalance?: number;
   availableBalance?: number;
   status: 'active' | 'disconnected' | 'error';
+  lastSyncAt?: string;
 }
 
 export interface Notification {
