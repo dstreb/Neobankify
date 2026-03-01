@@ -75,6 +75,9 @@ function createApiClient(): AxiosInstance {
       }
 
       if (isRefreshing) {
+        if (retryableRequest._retry) {
+          return Promise.reject(error);
+        }
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
