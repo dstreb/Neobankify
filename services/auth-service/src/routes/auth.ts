@@ -121,6 +121,17 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       },
     });
   } catch (error) {
+    const pgError = error as { code?: string };
+    if (pgError.code === '23505') {
+      res.status(409).json({
+        type: 'https://api.neobank.io/errors/conflict',
+        title: 'User Already Exists',
+        status: 409,
+        detail: 'An account with this email already exists for this tenant.',
+      });
+      return;
+    }
+
     logger.error('Registration failed', { error: (error as Error).message });
     res.status(500).json({
       type: 'https://api.neobank.io/errors/internal',
@@ -191,9 +202,13 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
     logger.info('User logged in', { userId: user.id, tenantId });
 
     // Update last login timestamp (auditing / dormant account detection)
-    await db('users')
+    // Non-critical: don't block login response if this fails
+    void db('users')
       .where({ id: user.id, tenant_id: tenantId })
-      .update({ last_login_at: new Date(), updated_at: new Date() });
+      .update({ last_login_at: new Date(), updated_at: new Date() })
+      .catch((err: { message?: string }) => {
+        logger.warn('Failed to update last_login_at', { userId: user.id, tenantId, error: err.message });
+      });
 
     res.json({
       success: true,
