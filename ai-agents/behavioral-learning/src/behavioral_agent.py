@@ -16,7 +16,6 @@ Outputs:
   - Preference adjustments for Orchestrator
 """
 import logging
-import math
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)

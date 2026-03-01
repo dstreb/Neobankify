@@ -25,7 +25,12 @@
     { "path": "services/tenant-service" },
     { "path": "services/rewards-catalog" },
     { "path": "services/card-management" },
-    { "path": "services/notification-service" }
+    { "path": "services/notification-service" },
+    { "path": "services/account-aggregation" },
+    { "path": "services/transaction-ingestion" },
+    { "path": "services/audit-service" },
+    { "path": "services/compliance-service" },
+    { "path": "services/idle-cash-service" }
   ],
   "exclude": ["node_modules", "dist", "apps/mobile", "apps/web", "ai-agents"]
 }
