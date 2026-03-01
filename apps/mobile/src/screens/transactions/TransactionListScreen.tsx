@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -20,15 +20,15 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [cursor, setCursor] = useState<string | null>(null);
+  const cursorRef = useRef<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
   const fetchTransactions = useCallback(async (reset = false) => {
     try {
       setLoading(true);
       const params: Record<string, unknown> = { limit: 20 };
-      if (!reset && cursor) {
-        params.cursor = cursor;
+      if (!reset && cursorRef.current) {
+        params.cursor = cursorRef.current;
       }
       if (selectedCategory !== 'All') {
         params.category = selectedCategory.toLowerCase();
@@ -41,20 +41,20 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       } else {
         setTransactions((prev) => [...prev, ...data]);
       }
-      setCursor(response.meta?.cursor ?? null);
+      cursorRef.current = response.meta?.cursor ?? null;
       setHasMore(response.meta?.hasMore ?? data.length === 20);
     } catch {
       // Handle error
     } finally {
       setLoading(false);
     }
-  }, [cursor, selectedCategory]);
+  }, [selectedCategory]);
 
   useEffect(() => {
     setTransactions([]);
-    setCursor(null);
+    cursorRef.current = null;
     fetchTransactions(true);
-  }, [selectedCategory]);
+  }, [fetchTransactions]);
 
   const onRefresh = async () => {
     setRefreshing(true);

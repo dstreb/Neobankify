@@ -109,7 +109,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         )}
 
         {/* AI Recommendations */}
-        {recommendations.length > 0 && (
+        {featureFlags.rewardsEnabled && recommendations.length > 0 && (
           <View style={{ marginBottom: spacing.lg }}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>AI Recommendations</Text>
