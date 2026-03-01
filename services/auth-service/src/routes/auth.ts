@@ -190,6 +190,11 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
 
     logger.info('User logged in', { userId: user.id, tenantId });
 
+    // Update last login timestamp (auditing / dormant account detection)
+    await db('users')
+      .where({ id: user.id, tenant_id: tenantId })
+      .update({ last_login_at: new Date(), updated_at: new Date() });
+
     res.json({
       success: true,
       data: {
