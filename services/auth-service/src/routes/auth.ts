@@ -148,9 +148,9 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
 
     const { email, password, tenantId } = parsed.data;
 
-    // Find user
+    // Find user (only active accounts can log in)
     const user = await db('users')
-      .where({ email, tenant_id: tenantId })
+      .where({ email, tenant_id: tenantId, status: 'active' })
       .first();
 
     if (!user) {
@@ -241,8 +241,8 @@ authRouter.post('/refresh', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Fetch user to get current roles
-    const user = await db('users').where({ id: decoded.sub }).first();
+    // Fetch user to get current roles (verify tenant + active status)
+    const user = await db('users').where({ id: decoded.sub, tenant_id: decoded.tenant_id, status: 'active' }).first();
     if (!user) {
       res.status(401).json({
         type: 'https://api.neobank.io/errors/unauthorized',

@@ -9,7 +9,7 @@ INSERT INTO tenants (id, name, slug, status, config, theme, feature_flags) VALUE
     'active',
     '{
         "allowedYieldVehicles": ["hysa", "money_market", "treasury_bill"],
-        "maxIdleCashSweepPct": 0.80,
+        "maxIdleCashSweepPct": 80,
         "defaultLiquidityThreshold": 1000,
         "kycProvider": "persona",
         "notificationChannels": ["push", "email", "in_app"],
