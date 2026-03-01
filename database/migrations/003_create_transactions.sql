@@ -8,7 +8,7 @@ CREATE TABLE transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id),
     account_id UUID REFERENCES linked_accounts(id),
-    tenant_id UUID REFERENCES tenants(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
     provider_transaction_id VARCHAR(255),
     amount NUMERIC(15, 2) NOT NULL,
     merchant_name VARCHAR(500) NOT NULL,

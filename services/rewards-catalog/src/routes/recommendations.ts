@@ -125,9 +125,19 @@ recommendationsRouter.post('/:id/dismiss', async (req: Request, res: Response): 
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    await db('agent_decisions')
+    const updated = await db('agent_decisions')
       .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({ outcome: 'dismissed' });
+
+    if (!updated) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Recommendation Not Found',
+        status: 404,
+        detail: 'Active recommendation not found.',
+      });
+      return;
+    }
 
     res.json({ success: true, data: { message: 'Recommendation dismissed.' } });
   } catch (error) {
@@ -148,12 +158,22 @@ recommendationsRouter.post('/:id/override', async (req: Request, res: Response):
     const tenantId = req.headers['x-tenant-id'] as string;
     const { reason } = req.body;
 
-    await db('agent_decisions')
+    const updated = await db('agent_decisions')
       .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({
         outcome: 'overridden',
         reasoning: db.raw("reasoning || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),
       });
+
+    if (!updated) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Recommendation Not Found',
+        status: 404,
+        detail: 'Active recommendation not found.',
+      });
+      return;
+    }
 
     logger.info('Recommendation overridden', { recommendationId: req.params.id, userId, reason });
     res.json({ success: true, data: { message: 'Recommendation overridden.' } });
