@@ -138,6 +138,13 @@ cardsRouter.delete('/:id', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
+class CardNotFoundError extends Error {
+  constructor() {
+    super('Card not found');
+    this.name = 'CardNotFoundError';
+  }
+}
+
 // --- PATCH /cards/:id/primary ---
 cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -150,13 +157,7 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
         .first();
 
       if (!targetCard) {
-        res.status(404).json({
-          type: 'https://api.neobank.io/errors/not-found',
-          title: 'Card Not Found',
-          status: 404,
-          detail: 'Card not found.',
-        });
-        return;
+        throw new CardNotFoundError();
       }
 
       // Unset existing primary cards
@@ -170,19 +171,23 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
         .update({ is_primary: true, updated_at: new Date() });
     });
 
-    // Only send success if response hasn't been sent (404 case)
-    if (!res.headersSent) {
-      res.json({ success: true, data: { message: 'Primary card updated.' } });
-    }
+    res.json({ success: true, data: { message: 'Primary card updated.' } });
   } catch (error) {
-    logger.error('Failed to set primary card', { error: (error as Error).message });
-    if (!res.headersSent) {
-      res.status(500).json({
-        type: 'https://api.neobank.io/errors/internal',
-        title: 'Internal Error',
-        status: 500,
-        detail: 'Failed to set primary card.',
+    if (error instanceof CardNotFoundError) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Card Not Found',
+        status: 404,
+        detail: 'Card not found.',
       });
+      return;
     }
+    logger.error('Failed to set primary card', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to set primary card.',
+    });
   }
 });
