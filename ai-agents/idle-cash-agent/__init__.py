@@ -1,0 +1,1 @@
+"""Idle Cash Agent package."""

@@ -1,0 +1,60 @@
+import { Router } from 'express';
+import type { Response } from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import type { ClientRequest, IncomingMessage } from 'http';
+import { logger } from '../config/logger';
+
+export const proxyRouter = Router();
+
+// Service registry - maps URL prefixes to backend services
+const SERVICE_ROUTES: Record<string, string> = {
+  '/auth': process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+  '/users': process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+  '/tenants': process.env.TENANT_SERVICE_URL || 'http://localhost:3002',
+  '/accounts': process.env.ACCOUNT_SERVICE_URL || 'http://localhost:3003',
+  '/transactions': process.env.TRANSACTION_SERVICE_URL || 'http://localhost:3004',
+  '/rewards': process.env.REWARDS_SERVICE_URL || 'http://localhost:3005',
+  '/cards': process.env.CARD_SERVICE_URL || 'http://localhost:3006',
+  '/idle-cash': process.env.IDLE_CASH_SERVICE_URL || 'http://localhost:3007',
+  '/recommendations': process.env.REWARDS_SERVICE_URL || 'http://localhost:3005',
+  '/admin': process.env.TENANT_SERVICE_URL || 'http://localhost:3002',
+  '/audit': process.env.AUDIT_SERVICE_URL || 'http://localhost:3008',
+  '/compliance': process.env.COMPLIANCE_SERVICE_URL || 'http://localhost:3009',
+  '/notifications': process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3010',
+};
+
+// Create proxy for each service route
+for (const [path, target] of Object.entries(SERVICE_ROUTES)) {
+  proxyRouter.use(
+    path,
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      pathRewrite: { ['^/']: `${path}/` },
+      onProxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
+        // Forward tenant and user context to backend services
+        const headers = req.headers;
+        if (headers['x-tenant-id']) {
+          proxyReq.setHeader('X-Tenant-ID', headers['x-tenant-id'] as string);
+        }
+        if (headers['x-user-id']) {
+          proxyReq.setHeader('X-User-ID', headers['x-user-id'] as string);
+        }
+        if (headers['x-correlation-id']) {
+          proxyReq.setHeader('X-Correlation-ID', headers['x-correlation-id'] as string);
+        }
+      },
+      onError: (err: Error, _req: IncomingMessage, _res: Response) => {
+        logger.error(`Proxy error for ${path}`, { error: err.message, target });
+        if (!_res.headersSent) {
+          _res.status(502).json({
+            type: 'https://api.neobank.io/errors/service-unavailable',
+            title: 'Service Unavailable',
+            status: 502,
+            detail: 'The upstream service is currently unavailable. Please try again later.',
+          });
+        }
+      },
+    })
+  );
+}
