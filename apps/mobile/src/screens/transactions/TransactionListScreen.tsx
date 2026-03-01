@@ -23,8 +23,8 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchTransactions = useCallback(async (reset = false) => {
-    const currentPage = reset ? 1 : page;
+  const fetchTransactions = useCallback(async (reset = false, pageOverride?: number) => {
+    const currentPage = reset ? 1 : (pageOverride ?? page);
     try {
       const params: Record<string, unknown> = {
         limit: 20,
@@ -64,8 +64,9 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
 
   const loadMore = () => {
     if (hasMore && !loading) {
-      setPage((p) => p + 1);
-      fetchTransactions(false);
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchTransactions(false, nextPage);
     }
   };
 

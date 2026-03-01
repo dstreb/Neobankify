@@ -113,7 +113,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
           <View style={{ marginBottom: spacing.lg }}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>AI Recommendations</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Recommendations')}>
+              <TouchableOpacity onPress={() => navigation.navigate('Rewards')}>
                 <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
               </TouchableOpacity>
             </View>
