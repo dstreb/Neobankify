@@ -21,9 +21,11 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const cursorRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
   const [hasMore, setHasMore] = useState(true);
 
   const fetchTransactions = useCallback(async (reset = false) => {
+    const requestId = ++requestIdRef.current;
     try {
       setLoading(true);
       const params: Record<string, unknown> = { limit: 20 };
@@ -36,6 +38,10 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       const response = await transactionsApi.getTransactions(params);
       const data = response.data;
 
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       if (reset) {
         setTransactions(data);
       } else {
@@ -44,6 +50,10 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       cursorRef.current = response.meta?.cursor ?? null;
       setHasMore(response.meta?.hasMore ?? data.length === 20);
     } catch {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       // Stop endless loadMore retries if the fetch fails
       if (reset) {
         setTransactions([]);
@@ -51,7 +61,9 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       cursorRef.current = null;
       setHasMore(false);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [selectedCategory]);
 
