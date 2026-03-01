@@ -104,7 +104,7 @@ export default function UsersPage() {
                     <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={kycVariant[user.kycStatus]}>{user.kycStatus.replace('_', ' ')}</Badge>
+                    <Badge variant={kycVariant[user.kycStatus]}>{user.kycStatus.replace(/_/g, ' ')}</Badge>
                   </TableCell>
                   <TableCell>{formatDate(user.createdAt)}</TableCell>
                   <TableCell>{formatDate(user.updatedAt)}</TableCell>

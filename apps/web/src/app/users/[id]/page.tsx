@@ -77,7 +77,7 @@ export default function UserDetailPage() {
                 <p className="text-sm text-gray-500">{user.email}</p>
                 <div className="mt-3 flex items-center gap-2">
                   <Badge variant={statusVariant[user.status]}>{user.status}</Badge>
-                  <Badge variant={kycVariant[user.kycStatus]}>KYC: {user.kycStatus.replace('_', ' ')}</Badge>
+                  <Badge variant={kycVariant[user.kycStatus]}>KYC: {user.kycStatus.replace(/_/g, ' ')}</Badge>
                 </div>
               </div>
               <div className="mt-6 space-y-3 border-t border-gray-100 pt-6">

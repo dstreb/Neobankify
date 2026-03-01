@@ -117,7 +117,7 @@ export default function CompliancePage() {
                     <Badge variant={severityVariant[alert.severity]}>{alert.severity}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant[alert.status]}>{alert.status.replace('_', ' ')}</Badge>
+                    <Badge variant={statusVariant[alert.status]}>{alert.status.replace(/_/g, ' ')}</Badge>
                   </TableCell>
                   <TableCell>
                     {alert.userId ? (
