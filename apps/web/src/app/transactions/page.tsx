@@ -98,10 +98,12 @@ export default function TransactionsPage() {
                   <TableCell>
                     {txn.enrichmentData?.rewardEligible ? (
                       <div>
+                        {txn.enrichmentData.pointsEarned !== undefined && (
                         <p className="text-sm text-emerald-600 font-medium">
                           {txn.enrichmentData.pointsEarned} pts
                         </p>
-                        {txn.enrichmentData.cashbackEarned && (
+                        )}
+                        {txn.enrichmentData.cashbackEarned !== undefined && txn.enrichmentData.cashbackEarned > 0 && (
                           <p className="text-xs text-gray-500">
                             {formatCurrency(txn.enrichmentData.cashbackEarned)} cashback
                           </p>
