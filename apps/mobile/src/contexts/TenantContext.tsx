@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import * as storage from '../utils/storage';
 import type { Tenant, BrandConfig, FeatureFlags } from '../types/models';
 import { useTheme } from './ThemeContext';
@@ -68,7 +68,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
     loadTenant();
   }, []);
 
-  const setTenant = async (newTenant: Tenant) => {
+  const setTenant = useCallback(async (newTenant: Tenant) => {
     await storage.setTenantId(newTenant.id);
     setTenantState(newTenant);
 
@@ -80,14 +80,14 @@ export function TenantProvider({ children }: TenantProviderProps) {
         accent: newTenant.brandConfig.accentColor,
       });
     }
-  };
+  }, [applyBrandColors]);
 
   const featureFlags = tenant?.featureFlags || DEFAULT_FEATURE_FLAGS;
   const brandConfig = tenant?.brandConfig || DEFAULT_BRAND_CONFIG;
 
   const value = useMemo(
     () => ({ tenant, isLoading, featureFlags, brandConfig, setTenant }),
-    [tenant, isLoading, featureFlags, brandConfig],
+    [tenant, isLoading, featureFlags, brandConfig, setTenant],
   );
 
   return (

@@ -42,3 +42,7 @@ export interface PaginationParams {
   limit?: number;
   cursor?: string;
 }
+
+export interface TransactionParams extends PaginationParams {
+  category?: string;
+}

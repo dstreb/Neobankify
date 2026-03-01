@@ -20,16 +20,15 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchTransactions = useCallback(async (reset = false, pageOverride?: number) => {
-    const currentPage = reset ? 1 : (pageOverride ?? page);
+  const fetchTransactions = useCallback(async (reset = false) => {
     try {
-      const params: Record<string, unknown> = {
-        limit: 20,
-        offset: (currentPage - 1) * 20,
-      };
+      const params: Record<string, unknown> = { limit: 20 };
+      if (!reset && cursor) {
+        params.cursor = cursor;
+      }
       if (selectedCategory !== 'All') {
         params.category = selectedCategory.toLowerCase();
       }
@@ -41,18 +40,20 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       } else {
         setTransactions((prev) => [...prev, ...data]);
       }
-      setHasMore(data.length === 20);
-      if (reset) setPage(1);
+      setCursor(response.meta?.cursor ?? null);
+      setHasMore(response.meta?.hasMore ?? data.length === 20);
+      if (reset) setCursor(null);
     } catch {
       // Handle error
     } finally {
       setLoading(false);
     }
-  }, [page, selectedCategory]);
+  }, [cursor, selectedCategory]);
 
   useEffect(() => {
     setLoading(true);
     setTransactions([]);
+    setCursor(null);
     fetchTransactions(true);
   }, [selectedCategory]);
 
@@ -64,9 +65,7 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
 
   const loadMore = () => {
     if (hasMore && !loading) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchTransactions(false, nextPage);
+      fetchTransactions(false);
     }
   };
 
