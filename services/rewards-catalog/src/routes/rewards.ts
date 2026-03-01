@@ -154,7 +154,7 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
         createdAt: d.created_at,
       })),
       meta: {
-        cursor: decisions.length > 0 ? decisions[decisions.length - 1].created_at : null,
+        cursor: hasMore && decisions.length > 0 ? decisions[decisions.length - 1].created_at : null,
         hasMore,
       },
     });
