@@ -56,6 +56,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isProcessingRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isProcessingRef.current) return;
@@ -78,7 +79,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await aiApi.sendMessage({
-        conversationId: state.conversationId ?? undefined,
+        conversationId: conversationIdRef.current ?? undefined,
         message: text.trim(),
         context: {
           recentTransactions: true,
@@ -87,6 +88,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
+      conversationIdRef.current = response.data.conversationId;
       setState((prev) => ({
         ...prev,
         messages: [...prev.messages, response.data.message],
@@ -104,7 +106,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [state.conversationId]);
+  }, []);
 
   const executeAction = useCallback(async (action: AIAction) => {
     try {
@@ -152,6 +154,7 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearConversation = useCallback(() => {
+    conversationIdRef.current = null;
     setState({
       messages: [WELCOME_MESSAGE, QUICK_START_TIPS],
       conversationId: null,
