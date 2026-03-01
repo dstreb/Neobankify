@@ -1,0 +1,160 @@
+import { Router, Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
+import db from '../config/database';
+import { logger } from '../config/logger';
+
+export const rewardsRouter = Router();
+
+// --- GET /rewards/summary ---
+rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+
+    // Aggregate reward earnings
+    const earned = await db('agent_decisions')
+      .where({ user_id: userId, agent_type: 'rewards_optimization' })
+      .whereNotNull("decision->>'pointsEarned'")
+      .sum({ totalPoints: db.raw("(decision->>'pointsEarned')::numeric") })
+      .sum({ totalCashback: db.raw("(decision->>'cashbackEarned')::numeric") })
+      .first();
+
+    // Get missed value
+    const missed = await db('transactions')
+      .where({ user_id: userId })
+      .whereNotNull("enrichment_data->>'missedValue'")
+      .sum({ missedValue: db.raw("(enrichment_data->>'missedValue')::numeric") })
+      .first();
+
+    res.json({
+      success: true,
+      data: {
+        totalPointsEarned: earned?.totalPoints || 0,
+        totalCashbackEarned: parseFloat(String(earned?.totalCashback || 0)).toFixed(2),
+        totalMissedValue: parseFloat(String(missed?.missedValue || 0)).toFixed(2),
+        period: 'all_time',
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to fetch rewards summary', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to fetch rewards summary.',
+    });
+  }
+});
+
+// --- GET /rewards/programs ---
+rewardsRouter.get('/programs', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    const programs = await db('reward_programs')
+      .where({ tenant_id: tenantId })
+      .orderBy('name');
+
+    res.json({
+      success: true,
+      data: programs.map(p => ({
+        id: p.id,
+        name: p.name,
+        issuer: p.issuer,
+        programType: p.program_type,
+        baseEarnRate: p.base_earn_rate,
+        categoryRates: p.category_rates,
+        pointValueCents: p.point_value_cents,
+        annualFee: p.annual_fee,
+        activeOffers: p.active_offers,
+      })),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch reward programs', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to fetch reward programs.',
+    });
+  }
+});
+
+// --- GET /rewards/offers ---
+rewardsRouter.get('/offers', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    // Get user's cards and their associated offers
+    const cards = await db('user_cards')
+      .where({ user_id: userId, status: 'active' })
+      .join('reward_programs', 'user_cards.reward_program_id', 'reward_programs.id')
+      .select('reward_programs.active_offers', 'user_cards.card_name');
+
+    const offers = cards.flatMap(c =>
+      (c.active_offers || []).map((offer: Record<string, unknown>) => ({
+        ...offer,
+        cardName: c.card_name,
+      }))
+    );
+
+    res.json({ success: true, data: offers });
+  } catch (error) {
+    logger.error('Failed to fetch offers', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to fetch offers.',
+    });
+  }
+});
+
+// --- GET /rewards/history ---
+rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 100);
+    const cursor = req.query.cursor as string;
+
+    let query = db('agent_decisions')
+      .where({ user_id: userId, agent_type: 'rewards_optimization' })
+      .orderBy('created_at', 'desc')
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.where('created_at', '<', cursor);
+    }
+
+    const decisions = await query;
+    const hasMore = decisions.length > limit;
+    if (hasMore) decisions.pop();
+
+    res.json({
+      success: true,
+      data: decisions.map(d => ({
+        id: d.id,
+        decisionType: d.decision_type,
+        decision: d.decision,
+        reasoning: d.reasoning,
+        confidenceScore: d.confidence_score,
+        status: d.status,
+        userAction: d.user_action,
+        createdAt: d.created_at,
+      })),
+      meta: {
+        cursor: decisions.length > 0 ? decisions[decisions.length - 1].created_at : null,
+        hasMore,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to fetch rewards history', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to fetch rewards history.',
+    });
+  }
+});

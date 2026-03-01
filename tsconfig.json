@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true
+  },
+  "references": [
+    { "path": "packages/shared-types" },
+    { "path": "packages/event-schemas" },
+    { "path": "services/api-gateway" },
+    { "path": "services/auth-service" },
+    { "path": "services/tenant-service" },
+    { "path": "services/rewards-catalog" },
+    { "path": "services/card-management" },
+    { "path": "services/notification-service" }
+  ],
+  "exclude": ["node_modules", "dist", "apps/mobile", "apps/web", "ai-agents"]
+}
