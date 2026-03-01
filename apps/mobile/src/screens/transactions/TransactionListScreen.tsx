@@ -44,7 +44,12 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       cursorRef.current = response.meta?.cursor ?? null;
       setHasMore(response.meta?.hasMore ?? data.length === 20);
     } catch {
-      // Handle error
+      // Stop endless loadMore retries if the fetch fails
+      if (reset) {
+        setTransactions([]);
+      }
+      cursorRef.current = null;
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
