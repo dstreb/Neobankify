@@ -163,7 +163,7 @@ services:
       DB_NAME: neobank
       DB_USER: neobank
       DB_PASSWORD: neobank_dev
-      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
     depends_on:
       postgres:
         condition: service_healthy

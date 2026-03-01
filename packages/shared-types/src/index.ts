@@ -62,7 +62,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type KycStatus = 'pending' | 'in_progress' | 'approved' | 'rejected' | 'review';
+export type KycStatus = 'pending' | 'in_progress' | 'approved' | 'rejected' | 'review' | 'expired';
 export type RiskProfile = 'conservative' | 'moderate' | 'aggressive';
 
 export interface UserGoal {

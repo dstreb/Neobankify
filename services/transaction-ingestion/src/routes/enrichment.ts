@@ -84,7 +84,7 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
     // Confidence score based on enrichment quality
     let enrichmentConfidence = 0.5;
     if (mccMapping) enrichmentConfidence += 0.3;
-    if (merchantNormalized !== txn.merchant_name) enrichmentConfidence += 0.1;
+    if (merchantNormalized !== txn.merchant_name.trim().toUpperCase()) enrichmentConfidence += 0.1;
     enrichmentConfidence = Math.min(enrichmentConfidence, 1.0);
 
     const enrichmentData = {
