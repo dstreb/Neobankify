@@ -42,7 +42,6 @@ export function TransactionListScreen({ navigation }: TransactionsScreenProps<'T
       }
       setCursor(response.meta?.cursor ?? null);
       setHasMore(response.meta?.hasMore ?? data.length === 20);
-      if (reset) setCursor(null);
     } catch {
       // Handle error
     } finally {
