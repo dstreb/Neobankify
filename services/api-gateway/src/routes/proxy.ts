@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import type { ClientRequest, IncomingMessage } from 'http';
 import { logger } from '../config/logger';
 
 export const proxyRouter = Router();
@@ -29,23 +31,21 @@ for (const [path, target] of Object.entries(SERVICE_ROUTES)) {
       target,
       changeOrigin: true,
       pathRewrite: { [`^/v1${path}`]: path },
-      on: {
-        proxyReq: (proxyReq, req) => {
-          // Forward tenant and user context to backend services
-          const expressReq = req as Express.Request;
-          if (expressReq.tenant?.tenantId) {
-            proxyReq.setHeader('X-Tenant-ID', expressReq.tenant.tenantId);
-          }
-          if (expressReq.userId) {
-            proxyReq.setHeader('X-User-ID', expressReq.userId);
-          }
-          if (req.headers['x-correlation-id']) {
-            proxyReq.setHeader('X-Correlation-ID', req.headers['x-correlation-id'] as string);
-          }
-        },
-        error: (err, _req, _res) => {
-          logger.error(`Proxy error for ${path}`, { error: err.message, target });
-        },
+      onProxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
+        // Forward tenant and user context to backend services
+        const headers = req.headers;
+        if (headers['x-tenant-id']) {
+          proxyReq.setHeader('X-Tenant-ID', headers['x-tenant-id'] as string);
+        }
+        if (headers['x-user-id']) {
+          proxyReq.setHeader('X-User-ID', headers['x-user-id'] as string);
+        }
+        if (headers['x-correlation-id']) {
+          proxyReq.setHeader('X-Correlation-ID', headers['x-correlation-id'] as string);
+        }
+      },
+      onError: (err: Error, _req: IncomingMessage, _res: Response) => {
+        logger.error(`Proxy error for ${path}`, { error: err.message, target });
       },
     })
   );

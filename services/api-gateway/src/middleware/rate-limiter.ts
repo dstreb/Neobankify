@@ -4,7 +4,7 @@ import type { Request } from 'express';
 // Extract tenant and user identifiers for rate limiting
 const keyGenerator = (req: Request): string => {
   const tenantId = req.headers['x-tenant-id'] as string || 'unknown';
-  const userId = (req as Record<string, unknown>).userId as string || req.ip || 'anonymous';
+  const userId = (req as unknown as Record<string, unknown>).userId as string || req.ip || 'anonymous';
   return `${tenantId}:${userId}`;
 };
 
