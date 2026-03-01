@@ -15,6 +15,8 @@ let failedQueue: Array<{
   reject: (reason: unknown) => void;
 }> = [];
 
+type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
 function processQueue(error: AxiosError | null, token: string | null = null) {
   failedQueue.forEach((promise) => {
     if (error) {
@@ -63,6 +65,8 @@ function createApiClient(): AxiosInstance {
         return Promise.reject(error);
       }
 
+      const retryableRequest = originalRequest as RetryableRequestConfig;
+
       // Prevent refresh loop if refresh itself fails
       if (originalRequest.url?.includes('/auth/refresh')) {
         await clearAllTokens();
@@ -77,18 +81,18 @@ function createApiClient(): AxiosInstance {
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${String(token)}`;
           }
-          (originalRequest as Record<string, unknown>)._retry = true;
+          retryableRequest._retry = true;
           return client(originalRequest);
         });
       }
 
       // Prevent infinite retry loop: only retry once after refresh
-      if ((originalRequest as Record<string, unknown>)._retry) {
+      if (retryableRequest._retry) {
         await clearAllTokens();
         emitSessionExpired();
         return Promise.reject(error);
       }
-      (originalRequest as Record<string, unknown>)._retry = true;
+      retryableRequest._retry = true;
 
       isRefreshing = true;
 
