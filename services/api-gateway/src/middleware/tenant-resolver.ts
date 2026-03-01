@@ -25,8 +25,8 @@ export const tenantResolver = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Skip tenant resolution for health checks
-    if (req.path.startsWith('/health')) {
+    // Skip tenant resolution for health checks and external webhooks
+    if (req.path.startsWith('/health') || req.path.startsWith('/v1/auth/kyc/webhook')) {
       next();
       return;
     }

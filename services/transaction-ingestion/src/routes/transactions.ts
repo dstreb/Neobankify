@@ -11,11 +11,12 @@ export const transactionRouter = Router();
 transactionRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 100);
     const cursor = req.query.cursor as string | undefined;
 
     let query = db('transactions')
-      .where({ user_id: userId })
+      .where({ user_id: userId, tenant_id: tenantId })
       .orderBy('transaction_date', 'desc')
       .limit(limit + 1);
 
@@ -63,9 +64,10 @@ transactionRouter.get('/', async (req: Request, res: Response): Promise<void> =>
 transactionRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const txn = await db('transactions')
-      .where({ id: req.params.id, user_id: userId })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId })
       .first();
 
     if (!txn) {
@@ -93,7 +95,7 @@ transactionRouter.get('/:id', async (req: Request, res: Response): Promise<void>
         status: txn.status,
         rewardEligible: txn.reward_eligible,
         enrichmentConfidence: txn.enrichment_confidence,
-        enrichmentData: txn.enrichment_data ? JSON.parse(txn.enrichment_data) : null,
+        enrichmentData: txn.enrichment_data || null,
       },
     });
   } catch (error) {
