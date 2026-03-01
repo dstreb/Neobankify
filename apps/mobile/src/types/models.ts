@@ -128,3 +128,58 @@ export interface Notification {
   createdAt: string;
   data?: Record<string, unknown>;
 }
+
+// =====================================================
+// AI Assistant Models
+// =====================================================
+
+export type ChatMessageRole = 'user' | 'assistant' | 'system';
+
+export type ChatMessageContentType = 'text' | 'insight' | 'action' | 'chart';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatMessageRole;
+  content: string;
+  contentType: ChatMessageContentType;
+  timestamp: string;
+  metadata?: ChatMessageMetadata;
+}
+
+export interface ChatMessageMetadata {
+  /** Structured insight data for rich rendering */
+  insight?: AIInsight;
+  /** Actionable suggestion the user can execute */
+  action?: AIAction;
+  /** Confidence score for AI-generated content (0–1) */
+  confidence?: number;
+  /** Agent that produced this response */
+  agentType?: string;
+}
+
+export interface AIInsight {
+  title: string;
+  summary: string;
+  category: 'spending' | 'rewards' | 'savings' | 'risk' | 'general';
+  impact?: string;
+  metric?: { label: string; value: string; trend?: 'up' | 'down' | 'flat' };
+}
+
+export interface AIAction {
+  id: string;
+  label: string;
+  description: string;
+  type: 'switch_card' | 'activate_offer' | 'optimize_rewards' | 'set_goal' | 'link_account' | 'custom';
+  payload?: Record<string, unknown>;
+  executed?: boolean;
+}
+
+export interface AIConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';

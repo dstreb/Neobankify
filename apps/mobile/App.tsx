@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { TenantProvider } from './src/contexts/TenantContext';
+import { AIProvider } from './src/contexts/AIContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useTheme } from './src/contexts/ThemeContext';
 
@@ -39,7 +40,9 @@ export default function App() {
         <ThemeProvider>
           <TenantProvider>
             <AuthProvider>
-              <AppContent />
+              <AIProvider>
+                <AppContent />
+              </AIProvider>
             </AuthProvider>
           </TenantProvider>
         </ThemeProvider>

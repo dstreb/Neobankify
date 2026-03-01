@@ -9,12 +9,14 @@ import { CardsNavigator } from './CardsNavigator';
 import { RewardsNavigator } from './RewardsNavigator';
 import { TransactionsNavigator } from './TransactionsNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
+import { AINavigator } from './AINavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const TAB_ICONS: Record<keyof MainTabParamList, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
   Dashboard: { focused: 'home', unfocused: 'home-outline' },
   Cards: { focused: 'card', unfocused: 'card-outline' },
+  AI: { focused: 'sparkles', unfocused: 'sparkles-outline' },
   Rewards: { focused: 'gift', unfocused: 'gift-outline' },
   Transactions: { focused: 'receipt', unfocused: 'receipt-outline' },
   Profile: { focused: 'person', unfocused: 'person-outline' },
@@ -51,6 +53,7 @@ export function MainTabNavigator() {
     >
       <Tab.Screen name="Dashboard" component={HomeNavigator} />
       <Tab.Screen name="Cards" component={CardsNavigator} />
+      <Tab.Screen name="AI" component={AINavigator} options={{ tabBarLabel: 'AI Assistant' }} />
       {featureFlags.rewardsEnabled && (
         <Tab.Screen name="Rewards" component={RewardsNavigator} />
       )}

@@ -22,9 +22,14 @@ export type OnboardingStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Cards: undefined;
+  AI: undefined;
   Rewards: undefined;
   Transactions: undefined;
   Profile: undefined;
+};
+
+export type AIStackParamList = {
+  AIChat: undefined;
 };
 
 export type HomeStackParamList = {
@@ -87,3 +92,6 @@ export type TransactionsScreenProps<T extends keyof TransactionsStackParamList> 
 
 export type ProfileScreenProps<T extends keyof ProfileStackParamList> =
   NativeStackScreenProps<ProfileStackParamList, T>;
+
+export type AIScreenProps<T extends keyof AIStackParamList> =
+  NativeStackScreenProps<AIStackParamList, T>;
