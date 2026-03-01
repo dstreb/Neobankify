@@ -55,8 +55,9 @@ function normalizeMerchantName(raw: string): string {
 enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<void> => {
   try {
     const { transactionId } = req.body;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
-    const txn = await db('transactions').where({ id: transactionId }).first();
+    const txn = await db('transactions').where({ id: transactionId, tenant_id: tenantId }).first();
     if (!txn) {
       res.status(404).json({
         type: 'https://api.neobank.io/errors/not-found',
@@ -94,7 +95,7 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
     };
 
     // Update transaction with enrichment data
-    await db('transactions').where({ id: transactionId }).update({
+    await db('transactions').where({ id: transactionId, tenant_id: tenantId }).update({
       category,
       subcategory,
       merchant_normalized: merchantNormalized,

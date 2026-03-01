@@ -149,7 +149,7 @@ recommendationsRouter.post('/:id/override', async (req: Request, res: Response):
     const { reason } = req.body;
 
     await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({
         outcome: 'overridden',
         reasoning: db.raw("reasoning || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),
