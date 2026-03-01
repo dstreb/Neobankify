@@ -58,6 +58,7 @@ export async function setOnboardingComplete(complete: boolean): Promise<void> {
 export async function clearAllTokens(): Promise<void> {
   await SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN);
   await SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN);
+  await SecureStore.deleteItemAsync(KEYS.ONBOARDING_COMPLETE);
 }
 
 export async function clearAll(): Promise<void> {

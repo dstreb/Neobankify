@@ -156,6 +156,7 @@ export function RecommendationDetailScreen({ route, navigation }: RewardsScreenP
               title="Dismiss"
               onPress={handleDismiss}
               variant="outline"
+              disabled={acting}
               fullWidth
               size="lg"
               style={{ marginTop: spacing.sm }}

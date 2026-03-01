@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import Constants from 'expo-constants';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, getTenantId, clearAllTokens } from '../utils/storage';
+import { emitSessionExpired } from '../utils/authEvents';
 
 // =====================================================
 // API Client with Auth Interceptors
@@ -65,6 +66,7 @@ function createApiClient(): AxiosInstance {
       // Prevent refresh loop if refresh itself fails
       if (originalRequest.url?.includes('/auth/refresh')) {
         await clearAllTokens();
+        emitSessionExpired();
         return Promise.reject(error);
       }
 
@@ -82,6 +84,7 @@ function createApiClient(): AxiosInstance {
       // Prevent infinite retry loop: only retry once after refresh
       if ((originalRequest as Record<string, unknown>)._retry) {
         await clearAllTokens();
+        emitSessionExpired();
         return Promise.reject(error);
       }
       (originalRequest as Record<string, unknown>)._retry = true;
@@ -116,6 +119,7 @@ function createApiClient(): AxiosInstance {
       } catch (refreshError) {
         processQueue(refreshError as AxiosError);
         await clearAllTokens();
+        emitSessionExpired();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

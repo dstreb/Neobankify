@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import * as authApi from '../api/auth';
 import * as storage from '../utils/storage';
+import { onSessionExpired } from '../utils/authEvents';
 import type { User } from '../types/models';
 import type { LoginRequest, RegisterRequest } from '../types/api';
 
@@ -61,6 +62,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
     checkAuth();
+  }, []);
+
+  // Listen for session-expired events from the API client
+  useEffect(() => {
+    const unsubscribe = onSessionExpired(() => {
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isOnboardingComplete: false,
+      });
+    });
+    return unsubscribe;
   }, []);
 
   const login = useCallback(async (data: LoginRequest) => {
