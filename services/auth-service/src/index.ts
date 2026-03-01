@@ -20,12 +20,21 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'healthy', service: 'auth-service' });
 });
 
-connectKafka().catch(err => {
-  logger.error('Failed to connect Kafka producer', { error: (err as Error).message });
-});
+async function start() {
+  try {
+    await connectKafka();
+    logger.info('Kafka producer connected');
+  } catch (err) {
+    logger.error('Failed to connect Kafka producer — audit events will be degraded', {
+      error: (err as Error).message,
+    });
+  }
 
-app.listen(PORT, () => {
-  logger.info(`Auth Service running on port ${PORT}`);
-});
+  app.listen(PORT, () => {
+    logger.info(`Auth Service running on port ${PORT}`);
+  });
+}
+
+start();
 
 export default app;
