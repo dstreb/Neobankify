@@ -79,6 +79,13 @@ function createApiClient(): AxiosInstance {
         });
       }
 
+      // Prevent infinite retry loop: only retry once after refresh
+      if ((originalRequest as Record<string, unknown>)._retry) {
+        await clearAllTokens();
+        return Promise.reject(error);
+      }
+      (originalRequest as Record<string, unknown>)._retry = true;
+
       isRefreshing = true;
 
       try {

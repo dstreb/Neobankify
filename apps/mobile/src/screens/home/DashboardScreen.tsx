@@ -121,7 +121,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
               <TouchableOpacity
                 key={rec.id}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('RecommendationDetail', { recommendationId: rec.id })}
+                onPress={() => navigation.navigate('Rewards', { screen: 'RecommendationDetail', params: { recommendationId: rec.id } })}
               >
                 <Card style={{ marginBottom: spacing.sm }}>
                   <View style={styles.recRow}>
@@ -158,7 +158,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
                 <React.Fragment key={txn.id}>
                   <TransactionItem
                     transaction={txn}
-                    onPress={() => navigation.navigate('TransactionDetail', { transactionId: txn.id })}
+                    onPress={() => navigation.navigate('Transactions', { screen: 'TransactionDetail', params: { transactionId: txn.id } })}
                   />
                   {i < recentTransactions.length - 1 && (
                     <View style={[styles.txnDivider, { backgroundColor: colors.borderLight }]} />
