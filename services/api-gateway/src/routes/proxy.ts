@@ -46,6 +46,14 @@ for (const [path, target] of Object.entries(SERVICE_ROUTES)) {
       },
       onError: (err: Error, _req: IncomingMessage, _res: Response) => {
         logger.error(`Proxy error for ${path}`, { error: err.message, target });
+        if (!_res.headersSent) {
+          _res.status(502).json({
+            type: 'https://api.neobank.io/errors/service-unavailable',
+            title: 'Service Unavailable',
+            status: 502,
+            detail: 'The upstream service is currently unavailable. Please try again later.',
+          });
+        }
       },
     })
   );

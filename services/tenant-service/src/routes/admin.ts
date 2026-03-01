@@ -156,7 +156,17 @@ adminRouter.patch('/tenants/:id', async (req: Request, res: Response): Promise<v
     if (req.body.config) updates.config = JSON.stringify(req.body.config);
     if (req.body.theme) updates.theme = JSON.stringify(req.body.theme);
 
-    await db('tenants').where({ id: tenantId }).update(updates);
+    const updated = await db('tenants').where({ id: tenantId }).update(updates);
+
+    if (updated === 0) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Tenant Not Found',
+        status: 404,
+        detail: 'No tenant found with the given ID.',
+      });
+      return;
+    }
 
     // Invalidate cache
     await redis.del(tenantId);
@@ -218,10 +228,20 @@ adminRouter.post('/tenants/:id/theme', async (req: Request, res: Response): Prom
   try {
     const tenantId = req.params.id;
 
-    await db('tenants').where({ id: tenantId }).update({
+    const updated = await db('tenants').where({ id: tenantId }).update({
       theme: JSON.stringify(req.body),
       updated_at: new Date(),
     });
+
+    if (updated === 0) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Tenant Not Found',
+        status: 404,
+        detail: 'No tenant found with the given ID.',
+      });
+      return;
+    }
 
     await redis.del(tenantId);
 
