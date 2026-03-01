@@ -30,7 +30,7 @@ for (const [path, target] of Object.entries(SERVICE_ROUTES)) {
     createProxyMiddleware({
       target,
       changeOrigin: true,
-      pathRewrite: { [`^/v1${path}`]: path },
+      pathRewrite: { ['^/']: `${path}/` },
       onProxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
         // Forward tenant and user context to backend services
         const headers = req.headers;

@@ -162,7 +162,7 @@ recommendationsRouter.post('/:id/override', async (req: Request, res: Response):
       .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({
         outcome: 'overridden',
-        reasoning: db.raw("reasoning || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),
+        reasoning: db.raw("COALESCE(reasoning, '') || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),
       });
 
     if (!updated) {
