@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import * as storage from '../utils/storage';
 import type { Tenant, BrandConfig, FeatureFlags } from '../types/models';
 import { useTheme } from './ThemeContext';
@@ -43,6 +43,8 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const [tenant, setTenantState] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { applyBrandColors } = useTheme();
+  const applyBrandColorsRef = useRef(applyBrandColors);
+  applyBrandColorsRef.current = applyBrandColors;
 
   useEffect(() => {
     async function loadTenant() {
@@ -51,12 +53,18 @@ export function TenantProvider({ children }: TenantProviderProps) {
         if (tenantId) {
           // In production, fetch tenant config from API
           // For now, use defaults
+          const brandConfig = DEFAULT_BRAND_CONFIG;
           setTenantState({
             id: tenantId,
             name: 'Neobank',
             slug: 'neobank',
-            brandConfig: DEFAULT_BRAND_CONFIG,
+            brandConfig,
             featureFlags: DEFAULT_FEATURE_FLAGS,
+          });
+          applyBrandColorsRef.current({
+            primary: brandConfig.primaryColor,
+            secondary: brandConfig.secondaryColor,
+            accent: brandConfig.accentColor,
           });
         }
       } catch {

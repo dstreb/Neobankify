@@ -79,22 +79,23 @@ export function RecommendationDetailScreen({ route, navigation }: RewardsScreenP
       <Header title="Recommendation" showBack onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Status Banner */}
-        {recommendation.outcome !== 'recommended' && (
-          <View style={[styles.statusBanner, {
-            backgroundColor: recommendation.outcome === 'executed' ? colors.successLight : colors.warningLight,
-          }]}>
-            <Ionicons
-              name={recommendation.outcome === 'executed' ? 'checkmark-circle' : 'close-circle'}
-              size={20}
-              color={recommendation.outcome === 'executed' ? colors.success : colors.warning}
-            />
-            <Text style={[styles.statusText, {
-              color: recommendation.outcome === 'executed' ? colors.success : colors.warning,
-            }]}>
-              {recommendation.outcome === 'executed' ? 'Executed' : 'Dismissed'}
-            </Text>
-          </View>
-        )}
+        {recommendation.outcome !== 'recommended' && (() => {
+          const outcomeConfig: Record<string, { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string }> = {
+            executed: { icon: 'checkmark-circle', color: colors.success, bg: colors.successLight },
+            dismissed: { icon: 'close-circle', color: colors.warning, bg: colors.warningLight },
+            overridden: { icon: 'swap-horizontal-outline', color: colors.primary, bg: colors.primaryLight ?? colors.borderLight },
+            expired: { icon: 'hourglass-outline', color: colors.textTertiary, bg: colors.borderLight },
+            blocked: { icon: 'ban-outline', color: colors.error, bg: colors.errorLight },
+          };
+          const cfg = outcomeConfig[recommendation.outcome] ?? { icon: 'help-circle-outline' as const, color: colors.textSecondary, bg: colors.borderLight };
+          const label = recommendation.outcome.charAt(0).toUpperCase() + recommendation.outcome.slice(1);
+          return (
+            <View style={[styles.statusBanner, { backgroundColor: cfg.bg }]}>
+              <Ionicons name={cfg.icon} size={20} color={cfg.color} />
+              <Text style={[styles.statusText, { color: cfg.color }]}>{label}</Text>
+            </View>
+          );
+        })()}
 
         {/* Decision Type */}
         <Card elevated style={{ marginBottom: spacing.lg }}>

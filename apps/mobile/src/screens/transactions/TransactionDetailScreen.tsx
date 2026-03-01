@@ -56,7 +56,7 @@ export function TransactionDetailScreen({ route, navigation }: TransactionsScree
         {/* Amount Header */}
         <View style={styles.amountSection}>
           <Text style={[styles.amount, { color: amountColor }]}>
-            {isCredit ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
+            {isCredit ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
           </Text>
           <View style={[styles.statusBadge, {
             backgroundColor: transaction.status === 'posted' ? colors.successLight : colors.warningLight,
