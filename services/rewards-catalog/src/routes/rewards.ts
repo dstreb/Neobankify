@@ -10,10 +10,11 @@ export const rewardsRouter = Router();
 rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Aggregate reward earnings
     const earned = await db('agent_decisions')
-      .where({ user_id: userId, agent_type: 'rewards_optimization' })
+      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
       .whereNotNull("decision->>'pointsEarned'")
       .sum({ totalPoints: db.raw("(decision->>'pointsEarned')::numeric") })
       .sum({ totalCashback: db.raw("(decision->>'cashbackEarned')::numeric") })
@@ -21,7 +22,7 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
 
     // Get missed value
     const missed = await db('transactions')
-      .where({ user_id: userId })
+      .where({ user_id: userId, tenant_id: tenantId })
       .whereNotNull("enrichment_data->>'missedValue'")
       .sum({ missedValue: db.raw("(enrichment_data->>'missedValue')::numeric") })
       .first();
@@ -124,11 +125,12 @@ rewardsRouter.get('/offers', async (req: Request, res: Response): Promise<void> 
 rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 100);
     const cursor = req.query.cursor as string;
 
     let query = db('agent_decisions')
-      .where({ user_id: userId, agent_type: 'rewards_optimization' })
+      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
       .orderBy('created_at', 'desc')
       .limit(limit + 1);
 

@@ -9,9 +9,10 @@ export const recommendationsRouter = Router();
 recommendationsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const recommendations = await db('agent_decisions')
-      .where({ user_id: userId, outcome: 'recommended' })
+      .where({ user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .orderBy('created_at', 'desc')
       .limit(20);
 
@@ -43,9 +44,10 @@ recommendationsRouter.get('/', async (req: Request, res: Response): Promise<void
 recommendationsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const rec = await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId })
       .first();
 
     if (!rec) {
@@ -88,9 +90,10 @@ recommendationsRouter.get('/:id', async (req: Request, res: Response): Promise<v
 recommendationsRouter.post('/:id/accept', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const updated = await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId, outcome: 'recommended' })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({ outcome: 'executed' });
 
     if (!updated) {
@@ -120,9 +123,10 @@ recommendationsRouter.post('/:id/accept', async (req: Request, res: Response): P
 recommendationsRouter.post('/:id/dismiss', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId, outcome: 'recommended' })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId, outcome: 'recommended' })
       .update({ outcome: 'dismissed' });
 
     res.json({ success: true, data: { message: 'Recommendation dismissed.' } });
@@ -141,10 +145,11 @@ recommendationsRouter.post('/:id/dismiss', async (req: Request, res: Response): 
 recommendationsRouter.post('/:id/override', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { reason } = req.body;
 
     await db('agent_decisions')
-      .where({ id: req.params.id, user_id: userId })
+      .where({ id: req.params.id, user_id: userId, tenant_id: tenantId })
       .update({
         outcome: 'overridden',
         reasoning: db.raw("reasoning || ' | USER OVERRIDE: ' || ?", [reason || 'No reason provided']),

@@ -23,9 +23,10 @@ export const kycRouter = Router();
 kycRouter.get('/status', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const user = await db('users')
-      .where({ id: userId })
+      .where({ id: userId, tenant_id: tenantId })
       .select('kyc_status', 'kyc_provider', 'kyc_reference_id')
       .first();
 
@@ -65,7 +66,7 @@ kycRouter.post('/initiate', async (req: Request, res: Response): Promise<void> =
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // Check current status
-    const user = await db('users').where({ id: userId }).select('kyc_status').first();
+    const user = await db('users').where({ id: userId, tenant_id: tenantId }).select('kyc_status').first();
 
     if (user?.kyc_status === 'approved') {
       res.status(400).json({
@@ -81,7 +82,7 @@ kycRouter.post('/initiate', async (req: Request, res: Response): Promise<void> =
     // For now, return a mock inquiry ID
     const inquiryId = `inq_${uuidv4().replace(/-/g, '').substring(0, 20)}`;
 
-    await db('users').where({ id: userId }).update({
+    await db('users').where({ id: userId, tenant_id: tenantId }).update({
       kyc_status: 'in_progress',
       kyc_provider: 'persona',
       kyc_reference_id: inquiryId,

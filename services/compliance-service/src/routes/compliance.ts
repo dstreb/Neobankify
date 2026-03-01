@@ -51,7 +51,7 @@ complianceRouter.post('/alerts/:id/resolve', async (req: Request, res: Response)
 
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    await db('compliance_alerts')
+    const updated = await db('compliance_alerts')
       .where({ id: req.params.id, tenant_id: tenantId })
       .update({
         status: 'resolved',
@@ -60,6 +60,16 @@ complianceRouter.post('/alerts/:id/resolve', async (req: Request, res: Response)
         resolved_by: actorId,
         resolved_at: new Date(),
       });
+
+    if (updated === 0) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Alert Not Found',
+        status: 404,
+        detail: 'Compliance alert not found.',
+      });
+      return;
+    }
 
     res.json({ success: true, data: { message: 'Alert resolved.' } });
   } catch (error) {

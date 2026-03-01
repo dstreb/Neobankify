@@ -67,25 +67,27 @@ cardsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const { cardName, issuer, network, lastFour, rewardProgramId, isPrimary } = parsed.data;
 
-    // If setting as primary, unset existing primary
-    if (isPrimary) {
-      await db('user_cards')
-        .where({ user_id: userId, is_primary: true })
-        .update({ is_primary: false });
-    }
-
     const cardId = uuidv4();
-    await db('user_cards').insert({
-      id: cardId,
-      user_id: userId,
-      card_name: cardName,
-      issuer,
-      network,
-      last_four: lastFour,
-      reward_program_id: rewardProgramId || null,
-      is_primary: isPrimary,
-      status: 'active',
-      created_at: new Date(),
+    await db.transaction(async (trx) => {
+      // If setting as primary, unset existing primary
+      if (isPrimary) {
+        await trx('user_cards')
+          .where({ user_id: userId, is_primary: true })
+          .update({ is_primary: false });
+      }
+
+      await trx('user_cards').insert({
+        id: cardId,
+        user_id: userId,
+        card_name: cardName,
+        issuer,
+        network,
+        last_four: lastFour,
+        reward_program_id: rewardProgramId || null,
+        is_primary: isPrimary,
+        status: 'active',
+        created_at: new Date(),
+      });
     });
 
     logger.info('Card added', { userId, cardId, issuer });
