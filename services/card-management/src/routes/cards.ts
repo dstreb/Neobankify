@@ -73,7 +73,7 @@ cardsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       if (isPrimary) {
         await trx('user_cards')
           .where({ user_id: userId, is_primary: true })
-          .update({ is_primary: false });
+          .update({ is_primary: false, updated_at: new Date() });
       }
 
       await trx('user_cards').insert({
@@ -114,7 +114,7 @@ cardsRouter.delete('/:id', async (req: Request, res: Response): Promise<void> =>
 
     const updated = await db('user_cards')
       .where({ id: req.params.id, user_id: userId })
-      .update({ status: 'removed' });
+      .update({ status: 'removed', updated_at: new Date() });
 
     if (updated === 0) {
       res.status(404).json({
@@ -162,12 +162,12 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
       // Unset existing primary cards
       await trx('user_cards')
         .where({ user_id: userId, is_primary: true })
-        .update({ is_primary: false });
+        .update({ is_primary: false, updated_at: new Date() });
 
       // Set new primary
       await trx('user_cards')
         .where({ id: req.params.id, user_id: userId })
-        .update({ is_primary: true });
+        .update({ is_primary: true, updated_at: new Date() });
     });
 
     // Only send success if response hasn't been sent (404 case)

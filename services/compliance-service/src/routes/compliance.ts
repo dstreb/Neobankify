@@ -59,6 +59,7 @@ complianceRouter.post('/alerts/:id/resolve', async (req: Request, res: Response)
         notes,
         resolved_by: actorId,
         resolved_at: new Date(),
+        updated_at: new Date(),
       });
 
     if (updated === 0) {

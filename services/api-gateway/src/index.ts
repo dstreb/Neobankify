@@ -21,7 +21,6 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
-app.use(express.json({ limit: '1mb' }));
 
 // Request logging (sanitized - no PII)
 app.use(requestLogger);
