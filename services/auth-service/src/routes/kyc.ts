@@ -161,7 +161,13 @@ kycRouter.post('/webhook', async (req: Request, res: Response): Promise<void> =>
       expired: 'expired',
     };
 
-    const kycStatus = kycStatusMap[status] || 'pending';
+    const kycStatus = kycStatusMap[status];
+
+    if (!kycStatus) {
+      logger.warn('KYC webhook received unrecognized Persona status', { inquiryId, status });
+      res.json({ received: true });
+      return;
+    }
 
     // Look up the user by kyc_reference_id to get tenant context
     const user = await db('users')

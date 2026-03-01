@@ -88,10 +88,13 @@ rewardsRouter.get('/offers', async (req: Request, res: Response): Promise<void> 
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Get user's cards and their associated reward programs
+    // Get user's cards and their associated reward programs (tenant-scoped)
     const cards = await db('user_cards')
       .where({ 'user_cards.user_id': userId, 'user_cards.status': 'active' })
-      .join('reward_programs', 'user_cards.reward_program_id', 'reward_programs.id')
+      .join('reward_programs', function() {
+        this.on('user_cards.reward_program_id', 'reward_programs.id')
+            .andOn('reward_programs.tenant_id', '=', db.raw('?', [tenantId]));
+      })
       .select(
         'user_cards.card_name',
         'reward_programs.name as program_name',
