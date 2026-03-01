@@ -158,7 +158,7 @@ kycRouter.post('/webhook', async (req: Request, res: Response): Promise<void> =>
       completed: 'approved',
       failed: 'rejected',
       needs_review: 'review',
-      expired: 'pending',
+      expired: 'expired',
     };
 
     const kycStatus = kycStatusMap[status] || 'pending';

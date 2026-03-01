@@ -73,9 +73,12 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
     const subcategory = mccMapping?.subcategory || 'uncategorized';
     const merchantNormalized = normalizeMerchantName(txn.merchant_name);
 
-    // Determine reward eligibility based on transaction type (not MCC category)
-    const txnType = (txn.transaction_type || '').toLowerCase();
-    const rewardEligible = !['cash_advance', 'balance_transfer', 'fee'].includes(txnType);
+    // Determine reward eligibility based on MCC code
+    // MCC codes in 6xxx range are financial services (cash advances, balance transfers, etc.)
+    const NON_REWARD_MCC_CODES = new Set([
+      '6010', '6011', '6012', '6051', '6211', '6300', // cash advances, ATMs, financial services
+    ]);
+    const rewardEligible = !(txn.mcc_code && NON_REWARD_MCC_CODES.has(txn.mcc_code));
 
     // Confidence score based on enrichment quality
     let enrichmentConfidence = 0.5;

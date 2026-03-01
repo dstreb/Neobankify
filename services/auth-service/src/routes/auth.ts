@@ -17,13 +17,11 @@ const JWT_REFRESH_TTL = '7d';
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
-  tenantId: z.string().uuid(),
 });
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
-  tenantId: z.string().uuid(),
 });
 
 // --- POST /auth/register ---
@@ -40,7 +38,8 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { email, password, tenantId } = parsed.data;
+    const { email, password } = parsed.data;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Check if user already exists
     const existing = await db('users')
@@ -146,7 +145,8 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { email, password, tenantId } = parsed.data;
+    const { email, password } = parsed.data;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Find user (only active accounts can log in)
     const user = await db('users')
