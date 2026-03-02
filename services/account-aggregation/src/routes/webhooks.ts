@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../config/logger';
 import db from '../config/database';
-import { verifyWebhookSignature } from '../lib/plaid-client';
+import { verifyWebhookSignature, createPlaidClient } from '../lib/plaid-client';
 import { syncItemTransactions, refreshBalances } from '../lib/plaid-sync';
 
 export const webhookRouter = Router();
@@ -21,6 +21,7 @@ webhookRouter.post('/plaid', async (req: Request, res: Response): Promise<void> 
     const isValid = await verifyWebhookSignature(
       rawBody,
       req.headers as Record<string, string>,
+      createPlaidClient(),
     );
     if (!isValid) {
       logger.warn('Invalid Plaid webhook signature');

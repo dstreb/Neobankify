@@ -12,12 +12,11 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Aggregate reward earnings
-    const earned = await db('agent_decisions')
-      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
-      .whereRaw("decision->>'pointsEarned' IS NOT NULL")
-      .sum({ totalPoints: db.raw("(decision->>'pointsEarned')::numeric") })
-      .sum({ totalCashback: db.raw("(decision->>'cashbackEarned')::numeric") })
+    // Aggregate reward earnings from the rewards_earned table (not agent_decisions)
+    const earned = await db('rewards_earned')
+      .where({ user_id: userId, tenant_id: tenantId })
+      .sum({ totalPoints: 'points_earned' })
+      .sum({ totalCashback: 'cashback_earned' })
       .first();
 
     // Get missed value
