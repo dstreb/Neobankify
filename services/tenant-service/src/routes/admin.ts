@@ -189,7 +189,29 @@ adminRouter.patch('/tenants/:id/features', async (req: Request, res: Response): 
       return;
     }
 
-    const mergedFlags = { ...existing.feature_flags, ...req.body };
+    // Validate feature flag input using the same schema as POST /admin/tenants
+    const featureFlagSchema = z.object({
+      rewardsOptimization: z.boolean().optional(),
+      idleCashSweep: z.boolean().optional(),
+      behavioralLearning: z.boolean().optional(),
+      cardRouting: z.boolean().optional(),
+      investing: z.boolean().optional(),
+      trading: z.boolean().optional(),
+      lending: z.boolean().optional(),
+    }).strict(); // strict() rejects unknown keys
+
+    const parsed = featureFlagSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        type: 'https://api.neobank.io/errors/validation',
+        title: 'Validation Error',
+        status: 400,
+        detail: parsed.error.errors.map(e => `${e.path}: ${e.message}`).join(', '),
+      });
+      return;
+    }
+
+    const mergedFlags = { ...existing.feature_flags, ...parsed.data };
 
     await db('tenants').where({ id: tenantId }).update({
       feature_flags: JSON.stringify(mergedFlags),

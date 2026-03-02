@@ -54,10 +54,10 @@ function verifyPersonaSignature(rawBody: string, signatureHeader: string | undef
     return false;
   }
 
-  // Reject webhooks older than 5 minutes to prevent replay attacks
-  const webhookAge = Math.abs(Date.now() / 1000 - parseInt(timestamp, 10));
-  if (webhookAge > 300) {
-    logger.warn('Persona webhook timestamp too old', { ageSeconds: webhookAge });
+  // Reject webhooks older than 5 minutes or more than 30s in the future (replay/future-dated protection)
+  const webhookAge = Date.now() / 1000 - parseInt(timestamp, 10);
+  if (webhookAge > 300 || webhookAge < -30) {
+    logger.warn('Persona webhook timestamp out of range', { ageSeconds: webhookAge });
     return false;
   }
 

@@ -26,7 +26,7 @@ export const tenantResolver = async (
 ): Promise<void> => {
   try {
     // Skip tenant resolution for health checks and external webhooks
-    if (req.path.startsWith('/health') || req.path === '/v1/auth/kyc/webhook') {
+    if (req.path.startsWith('/health') || req.path === '/v1/auth/kyc/webhook' || req.path.startsWith('/v1/webhooks/')) {
       next();
       return;
     }
@@ -59,7 +59,10 @@ export const tenantResolver = async (
     // Uses Redis cache with DB fallback for performance
     const redis = req.app.locals.redis;
     let tenantSlug = '';
-    const cacheKey = `tenant:${tenantId}`;
+    // Use raw tenantId as cache key — the gateway Redis has no keyPrefix.
+    // The tenant-service Redis uses keyPrefix:'tenant:' so its keys are 'tenant:<uuid>'.
+    // The gateway maintains its own independent cache namespace.
+    const cacheKey = tenantId;
 
     if (redis) {
       try {

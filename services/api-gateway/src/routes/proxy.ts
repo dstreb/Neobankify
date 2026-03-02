@@ -21,6 +21,7 @@ const SERVICE_ROUTES: Record<string, string> = {
   '/audit': process.env.AUDIT_SERVICE_URL || 'http://localhost:3008',
   '/compliance': process.env.COMPLIANCE_SERVICE_URL || 'http://localhost:3009',
   '/notifications': process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3010',
+  '/webhooks': process.env.ACCOUNT_SERVICE_URL || 'http://localhost:3003',
 };
 
 // Create proxy for each service route

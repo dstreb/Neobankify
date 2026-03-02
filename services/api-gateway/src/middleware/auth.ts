@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   '/v1/auth/login',
   '/v1/auth/refresh',
   '/v1/auth/kyc/webhook',
+  '/v1/webhooks/plaid',
 ];
 
 /**
