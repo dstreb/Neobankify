@@ -47,7 +47,9 @@ function verifyPersonaSignature(rawBody: string, signatureHeader: string | undef
     .update(payload)
     .digest('hex');
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))) {
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expectedBuf = Buffer.from(expectedSignature, 'hex');
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     logger.warn('Persona webhook signature mismatch');
     return false;
   }
@@ -201,7 +203,7 @@ kycRouter.post('/initiate', async (req: Request, res: Response): Promise<void> =
 kycRouter.post('/webhook', async (req: Request, res: Response): Promise<void> => {
   try {
     // Verify Persona webhook signature
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const rawBody = (req as Request & { rawBody?: string }).rawBody || JSON.stringify(req.body);
     const signatureHeader = req.headers['persona-signature'] as string | undefined;
 
     if (!verifyPersonaSignature(rawBody, signatureHeader)) {

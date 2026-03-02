@@ -16,9 +16,10 @@ export const webhookRouter = Router();
  */
 webhookRouter.post('/plaid', async (req: Request, res: Response): Promise<void> => {
   try {
-    // Verify webhook signature
+    // Verify webhook signature using raw body bytes for correct hash comparison
+    const rawBody = (req as Request & { rawBody?: string }).rawBody || JSON.stringify(req.body);
     const isValid = await verifyWebhookSignature(
-      JSON.stringify(req.body),
+      rawBody,
       req.headers as Record<string, string>,
     );
     if (!isValid) {
