@@ -254,90 +254,94 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
     // Generate a unique loan number
     const loanNumber = `LN-${Date.now().toString(36).toUpperCase()}-${loanId.substring(0, 4).toUpperCase()}`;
 
-    await db('loans').insert({
-      id: loanId,
-      application_id: application.id,
-      user_id: userId,
-      tenant_id: tenantId,
-      loan_product_id: application.loan_product_id,
-      loan_number: loanNumber,
-      principal_amount: application.approved_amount,
-      current_balance: application.approved_amount,
-      apr: application.approved_apr, // Already stored as percentage (e.g. 5.99)
-      term_months: application.approved_term_months,
-      monthly_payment: application.monthly_payment,
-      origination_fee: application.origination_fee || 0,
-      total_interest_paid: 0,
-      total_principal_paid: 0,
-      payments_remaining: application.approved_term_months,
-      status: 'active',
-      next_payment_date: firstPaymentDate,
-      next_payment_amount: application.monthly_payment,
-      funded_at: originatedAt,
-      maturity_date: maturityDate,
-      created_at: originatedAt,
-      updated_at: originatedAt,
-    });
-
-    // Update application status
-    await db('loan_applications')
-      .where({ id: application.id })
-      .update({ status: 'funded', funded_at: originatedAt, updated_at: new Date() });
-
-    // Generate amortization schedule
-    // approved_apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
-    const monthlyRate = (application.approved_apr / 100) / 12;
-    let balance = application.approved_amount;
-    const scheduleRows = [];
-
-    for (let i = 1; i <= application.approved_term_months; i++) {
-      const interestPortion = Math.round(balance * monthlyRate * 100) / 100;
-      const principalPortion = Math.round((application.monthly_payment - interestPortion) * 100) / 100;
-      balance = Math.round((balance - principalPortion) * 100) / 100;
-      if (balance < 0) balance = 0;
-
-      const dueDate = new Date(originatedAt);
-      dueDate.setMonth(dueDate.getMonth() + i);
-
-      scheduleRows.push({
-        id: uuidv4(),
-        loan_id: loanId,
+    // Wrap entire origination in a transaction for atomicity:
+    // loan creation, application update, amortization schedule, and audit log
+    await db.transaction(async (trx) => {
+      await trx('loans').insert({
+        id: loanId,
+        application_id: application.id,
+        user_id: userId,
         tenant_id: tenantId,
-        payment_number: i,
-        due_date: dueDate,
-        total_amount: application.monthly_payment,
-        principal_amount: principalPortion,
-        interest_amount: interestPortion,
-        remaining_balance: balance,
-        status: 'scheduled',
+        loan_product_id: application.loan_product_id,
+        loan_number: loanNumber,
+        principal_amount: application.approved_amount,
+        current_balance: application.approved_amount,
+        apr: application.approved_apr, // Already stored as percentage (e.g. 5.99)
+        term_months: application.approved_term_months,
+        monthly_payment: application.monthly_payment,
+        origination_fee: application.origination_fee || 0,
+        total_interest_paid: 0,
+        total_principal_paid: 0,
+        payments_remaining: application.approved_term_months,
+        status: 'active',
+        next_payment_date: firstPaymentDate,
+        next_payment_amount: application.monthly_payment,
+        funded_at: originatedAt,
+        maturity_date: maturityDate,
         created_at: originatedAt,
         updated_at: originatedAt,
       });
-    }
 
-    // Batch insert payment schedule
-    if (scheduleRows.length > 0) {
-      await db('loan_payments').insert(scheduleRows);
-    }
+      // Update application status
+      await trx('loan_applications')
+        .where({ id: application.id })
+        .update({ status: 'funded', funded_at: originatedAt, updated_at: new Date() });
 
-    // Audit log
-    await db('audit_log').insert({
-      id: uuidv4(),
-      tenant_id: tenantId,
-      user_id: userId,
-      event_type: 'audit.immutable',
-      action: 'loan_originated',
-      entity_type: 'loan',
-      entity_id: loanId,
-      before_state: null,
-      after_state: {
-        loanId,
-        principal: application.approved_amount,
-        apr: application.approved_apr,
-        termMonths: application.approved_term_months,
-      },
-      ip_address: req.ip || null,
-      created_at: new Date(),
+      // Generate amortization schedule
+      // approved_apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
+      const monthlyRate = (application.approved_apr / 100) / 12;
+      let balance = application.approved_amount;
+      const scheduleRows = [];
+
+      for (let i = 1; i <= application.approved_term_months; i++) {
+        const interestPortion = Math.round(balance * monthlyRate * 100) / 100;
+        const principalPortion = Math.round((application.monthly_payment - interestPortion) * 100) / 100;
+        balance = Math.round((balance - principalPortion) * 100) / 100;
+        if (balance < 0) balance = 0;
+
+        const dueDate = new Date(originatedAt);
+        dueDate.setMonth(dueDate.getMonth() + i);
+
+        scheduleRows.push({
+          id: uuidv4(),
+          loan_id: loanId,
+          tenant_id: tenantId,
+          payment_number: i,
+          due_date: dueDate,
+          total_amount: application.monthly_payment,
+          principal_amount: principalPortion,
+          interest_amount: interestPortion,
+          remaining_balance: balance,
+          status: 'scheduled',
+          created_at: originatedAt,
+          updated_at: originatedAt,
+        });
+      }
+
+      // Batch insert payment schedule
+      if (scheduleRows.length > 0) {
+        await trx('loan_payments').insert(scheduleRows);
+      }
+
+      // Audit log
+      await trx('audit_log').insert({
+        id: uuidv4(),
+        tenant_id: tenantId,
+        user_id: userId,
+        event_type: 'audit.immutable',
+        action: 'loan_originated',
+        entity_type: 'loan',
+        entity_id: loanId,
+        before_state: null,
+        after_state: {
+          loanId,
+          principal: application.approved_amount,
+          apr: application.approved_apr,
+          termMonths: application.approved_term_months,
+        },
+        ip_address: req.ip || null,
+        created_at: new Date(),
+      });
     });
 
     logger.info('Loan originated', {

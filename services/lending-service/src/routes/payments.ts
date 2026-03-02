@@ -29,11 +29,141 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const loan = await db('loans')
-      .where({ id: parsed.data.loanId, user_id: userId, tenant_id: tenantId, status: 'active' })
-      .first();
+    // Wrap entire payment processing in a transaction with row-level locking
+    // to prevent concurrent payments from corrupting the loan balance
+    const result = await db.transaction(async (trx) => {
+      // Lock the loan row to prevent concurrent reads of stale balance
+      const loan = await trx('loans')
+        .where({ id: parsed.data.loanId, user_id: userId, tenant_id: tenantId, status: 'active' })
+        .forUpdate()
+        .first();
 
-    if (!loan) {
+      if (!loan) {
+        return { notFound: true } as const;
+      }
+
+      // Calculate interest allocation
+      // loan.apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
+      const dailyRate = (loan.apr / 100) / 365;
+      const lastPaymentDate = loan.next_payment_date || loan.funded_at;
+      const daysSincePayment = Math.floor(
+        (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const accruedInterest = Math.round(loan.current_balance * dailyRate * daysSincePayment * 100) / 100;
+
+      const interestPortion = Math.min(parsed.data.amount, accruedInterest);
+      const principalPortion = Math.round((parsed.data.amount - interestPortion) * 100) / 100;
+      const newBalance = Math.max(0, Math.round((loan.current_balance - principalPortion) * 100) / 100);
+
+      // Find the next scheduled payment row from the amortization schedule
+      // During origination, all payment rows (1..N) are pre-generated with status='scheduled'
+      const scheduledPayment = await trx('loan_payments')
+        .where({ loan_id: loan.id, tenant_id: tenantId, status: 'scheduled' })
+        .orderBy('payment_number', 'asc')
+        .first();
+
+      let paymentId: string;
+
+      if (scheduledPayment) {
+        // Update the existing scheduled row with actual payment details
+        paymentId = scheduledPayment.id as string;
+        await trx('loan_payments')
+          .where({ id: paymentId })
+          .update({
+            total_amount: parsed.data.amount,
+            principal_amount: principalPortion,
+            interest_amount: interestPortion,
+            paid_amount: parsed.data.amount,
+            paid_date: new Date(),
+            remaining_balance: newBalance,
+            payment_method: parsed.data.paymentMethod,
+            status: 'paid',
+            updated_at: new Date(),
+          });
+      } else {
+        // No scheduled payment exists (extra payment beyond schedule)
+        const lastPayment = await trx('loan_payments')
+          .where({ loan_id: loan.id, tenant_id: tenantId })
+          .orderBy('payment_number', 'desc')
+          .first();
+        const paymentNumber = lastPayment ? (lastPayment.payment_number as number) + 1 : 1;
+
+        paymentId = uuidv4();
+        await trx('loan_payments').insert({
+          id: paymentId,
+          loan_id: loan.id,
+          tenant_id: tenantId,
+          payment_number: paymentNumber,
+          total_amount: parsed.data.amount,
+          principal_amount: principalPortion,
+          interest_amount: interestPortion,
+          paid_amount: parsed.data.amount,
+          paid_date: new Date(),
+          remaining_balance: newBalance,
+          payment_method: parsed.data.paymentMethod,
+          status: 'paid',
+          due_date: loan.next_payment_date,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+      }
+
+      // Update loan balance
+      const nextPaymentDate = new Date(loan.next_payment_date);
+      nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+
+      const loanStatus = newBalance <= 0 ? 'paid_off' : 'active';
+
+      await trx('loans')
+        .where({ id: loan.id })
+        .update({
+          current_balance: newBalance,
+          total_principal_paid: (loan.total_principal_paid || 0) + principalPortion,
+          total_interest_paid: (loan.total_interest_paid || 0) + interestPortion,
+          payments_made: (loan.payments_made || 0) + 1,
+          payments_remaining: Math.max(0, (loan.payments_remaining || 0) - 1),
+          next_payment_date: loanStatus === 'active' ? nextPaymentDate : null,
+          next_payment_amount: loanStatus === 'active' ? loan.monthly_payment : null,
+          status: loanStatus,
+          paid_off_at: loanStatus === 'paid_off' ? new Date() : null,
+          updated_at: new Date(),
+        });
+
+      // Audit log
+      await trx('audit_log').insert({
+        id: uuidv4(),
+        tenant_id: tenantId,
+        user_id: userId,
+        event_type: 'audit.immutable',
+        action: 'loan_payment_made',
+        entity_type: 'loan_payment',
+        entity_id: paymentId,
+        before_state: { balance: loan.current_balance },
+        after_state: {
+          balance: newBalance,
+          paymentAmount: parsed.data.amount,
+          principalPortion,
+          interestPortion,
+          loanStatus,
+        },
+        ip_address: req.ip || null,
+        created_at: new Date(),
+      });
+
+      return {
+        notFound: false,
+        paymentId,
+        loanId: loan.id,
+        amount: parsed.data.amount,
+        principalPortion,
+        interestPortion,
+        newBalance,
+        loanStatus,
+        monthlyPayment: loan.monthly_payment,
+      } as const;
+    });
+
+    if (result.notFound) {
       res.status(404).json({
         type: 'https://api.neobank.io/errors/not-found',
         title: 'Not Found',
@@ -43,119 +173,13 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Calculate interest allocation
-    // loan.apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
-    const dailyRate = (loan.apr / 100) / 365;
-    const lastPaymentDate = loan.next_payment_date || loan.funded_at;
-    const daysSincePayment = Math.floor(
-      (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
-    );
-    const accruedInterest = Math.round(loan.current_balance * dailyRate * daysSincePayment * 100) / 100;
-
-    const interestPortion = Math.min(parsed.data.amount, accruedInterest);
-    const principalPortion = Math.round((parsed.data.amount - interestPortion) * 100) / 100;
-    const newBalance = Math.max(0, Math.round((loan.current_balance - principalPortion) * 100) / 100);
-
-    // Find the next scheduled payment row from the amortization schedule
-    // During origination, all payment rows (1..N) are pre-generated with status='scheduled'
-    const scheduledPayment = await db('loan_payments')
-      .where({ loan_id: loan.id, tenant_id: tenantId, status: 'scheduled' })
-      .orderBy('payment_number', 'asc')
-      .first();
-
-    let paymentId: string;
-
-    if (scheduledPayment) {
-      // Update the existing scheduled row with actual payment details
-      paymentId = scheduledPayment.id as string;
-      await db('loan_payments')
-        .where({ id: paymentId })
-        .update({
-          total_amount: parsed.data.amount,
-          principal_amount: principalPortion,
-          interest_amount: interestPortion,
-          paid_amount: parsed.data.amount,
-          paid_date: new Date(),
-          remaining_balance: newBalance,
-          payment_method: parsed.data.paymentMethod,
-          status: 'paid',
-          updated_at: new Date(),
-        });
-    } else {
-      // No scheduled payment exists (extra payment beyond schedule)
-      const lastPayment = await db('loan_payments')
-        .where({ loan_id: loan.id, tenant_id: tenantId })
-        .orderBy('payment_number', 'desc')
-        .first();
-      const paymentNumber = lastPayment ? (lastPayment.payment_number as number) + 1 : 1;
-
-      paymentId = uuidv4();
-      await db('loan_payments').insert({
-        id: paymentId,
-        loan_id: loan.id,
-        tenant_id: tenantId,
-        payment_number: paymentNumber,
-        total_amount: parsed.data.amount,
-        principal_amount: principalPortion,
-        interest_amount: interestPortion,
-        paid_amount: parsed.data.amount,
-        paid_date: new Date(),
-        remaining_balance: newBalance,
-        payment_method: parsed.data.paymentMethod,
-        status: 'paid',
-        due_date: loan.next_payment_date,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
-    }
-
-    // Update loan balance
-    const nextPaymentDate = new Date(loan.next_payment_date);
-    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
-
-    const loanStatus = newBalance <= 0 ? 'paid_off' : 'active';
-
-    await db('loans')
-      .where({ id: loan.id })
-      .update({
-        current_balance: newBalance,
-        total_principal_paid: (loan.total_principal_paid || 0) + principalPortion,
-        total_interest_paid: (loan.total_interest_paid || 0) + interestPortion,
-        payments_made: (loan.payments_made || 0) + 1,
-        payments_remaining: Math.max(0, (loan.payments_remaining || 0) - 1),
-        next_payment_date: loanStatus === 'active' ? nextPaymentDate : null,
-        next_payment_amount: loanStatus === 'active' ? loan.monthly_payment : null,
-        status: loanStatus,
-        paid_off_at: loanStatus === 'paid_off' ? new Date() : null,
-        updated_at: new Date(),
-      });
-
-    // Audit log
-    await db('audit_log').insert({
-      id: uuidv4(),
-      tenant_id: tenantId,
-      user_id: userId,
-      event_type: 'audit.immutable',
-      action: 'loan_payment_made',
-      entity_type: 'loan_payment',
-      entity_id: paymentId,
-      before_state: { balance: loan.current_balance },
-      after_state: {
-        balance: newBalance,
-        paymentAmount: parsed.data.amount,
-        principalPortion,
-        interestPortion,
-        loanStatus,
-      },
-      ip_address: req.ip || null,
-      created_at: new Date(),
-    });
+    const { paymentId, newBalance, loanStatus, principalPortion, interestPortion } = result;
 
     logger.info('Loan payment processed', {
       userId,
       tenantId,
       paymentId,
-      loanId: loan.id,
+      loanId: result.loanId,
       amount: parsed.data.amount,
       newBalance,
     });
@@ -164,7 +188,7 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       success: true,
       data: {
         paymentId,
-        loanId: loan.id,
+        loanId: result.loanId,
         amount: parsed.data.amount,
         principalPortion,
         interestPortion,
