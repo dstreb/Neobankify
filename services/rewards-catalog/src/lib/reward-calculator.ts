@@ -26,6 +26,7 @@ export interface CardPortfolioEntry {
   activeBonuses: Array<{
     category: string;
     earnRate: number;
+    quarterStart: string;
     quarterEnd: string;
   }>;
   activeOffers: Array<{
@@ -202,6 +203,7 @@ function scoreCard(
   for (const bonus of card.activeBonuses) {
     if (
       bonus.category === txn.category &&
+      new Date(bonus.quarterStart) <= now &&
       new Date(bonus.quarterEnd) > now
     ) {
       earnRate = bonus.earnRate;

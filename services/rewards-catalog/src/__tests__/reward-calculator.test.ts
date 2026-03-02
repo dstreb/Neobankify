@@ -104,7 +104,7 @@ describe('Reward Calculator', () => {
           baseEarnRate: 0.01,
           categoryRates: { dining: 0.03 },
           activeBonuses: [
-            { category: 'dining', earnRate: 0.05, quarterEnd: futureDate },
+            { category: 'dining', earnRate: 0.05, quarterStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), quarterEnd: futureDate },
           ],
         }),
       ];
@@ -124,7 +124,7 @@ describe('Reward Calculator', () => {
           baseEarnRate: 0.01,
           categoryRates: { dining: 0.03 },
           activeBonuses: [
-            { category: 'dining', earnRate: 0.05, quarterEnd: pastDate },
+            { category: 'dining', earnRate: 0.05, quarterStart: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), quarterEnd: pastDate },
           ],
         }),
       ];
