@@ -24,6 +24,12 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
       return;
     }
 
+    // Extract Plaid categories from enrichment_data if stored during Plaid sync,
+    // so the enrichment pipeline can use them as a fallback instead of defaulting to 'other'.
+    const existingEnrichment = txn.enrichment_data
+      ? (typeof txn.enrichment_data === 'string' ? JSON.parse(txn.enrichment_data) : txn.enrichment_data)
+      : {};
+
     const rawTxn: RawTransaction = {
       id: txn.id,
       userId: txn.user_id,
@@ -34,6 +40,8 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
       mccCode: txn.mcc_code,
       transactionDate: txn.transaction_date,
       status: txn.status,
+      plaidCategory: existingEnrichment.plaidCategory || txn.category || null,
+      plaidDetailedCategory: existingEnrichment.plaidDetailedCategory || txn.subcategory || null,
     };
 
     const result = await enrichAndPersist(rawTxn);

@@ -34,10 +34,15 @@ export interface PlaidTenantConfig {
   countryCodes: string[];
 }
 
+/** Resolve the effective Plaid environment (defaults to sandbox when PLAID_ENV is unset). */
+function getPlaidEnv(): PlaidTenantConfig['environment'] {
+  return (process.env.PLAID_ENV as PlaidTenantConfig['environment']) || 'sandbox';
+}
+
 const DEFAULT_CONFIG: PlaidTenantConfig = {
   clientId: process.env.PLAID_CLIENT_ID || '',
   secret: process.env.PLAID_SECRET || '',
-  environment: (process.env.PLAID_ENV as PlaidTenantConfig['environment']) || 'sandbox',
+  environment: getPlaidEnv(),
   webhookUrl: process.env.PLAID_WEBHOOK_URL || 'https://api.neobank.io/webhooks/plaid',
   products: ['transactions', 'auth', 'identity'],
   countryCodes: ['US'],
@@ -335,7 +340,7 @@ export async function verifyWebhookSignature(
   if (!plaidVerification) {
     logger.warn('Missing Plaid verification header');
     // In sandbox mode, allow unverified webhooks
-    if (process.env.PLAID_ENV === 'sandbox') {
+    if (getPlaidEnv() === 'sandbox') {
       return true;
     }
     return false;
@@ -361,7 +366,7 @@ export async function verifyWebhookSignature(
     if (!plaidClient) {
       logger.warn('No Plaid client provided for webhook verification — cannot fetch key');
       // In sandbox mode, allow if we can't verify
-      if (process.env.PLAID_ENV === 'sandbox') {
+      if (getPlaidEnv() === 'sandbox') {
         return true;
       }
       return false;
