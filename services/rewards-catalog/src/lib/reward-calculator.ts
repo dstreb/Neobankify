@@ -117,16 +117,28 @@ export function calculateRewards(
     };
   }
 
-  // Score each card
+  // Score each card (filtered by utilization for recommendations)
   const scores: CardScore[] = portfolio
     .filter((card) => isCardUsable(card, txn.amount))
     .map((card) => scoreCard(card, txn, redemptionPreference));
 
+  // Score the actual card separately (even if filtered out by utilization)
+  // so we always record correct earnings for the card the user actually used
+  let actualCard: CardScore | null = null;
+  if (txn.cardUsed) {
+    const actualCardEntry = portfolio.find((c) => c.cardId === txn.cardUsed);
+    if (actualCardEntry) {
+      // Check if already in scored list
+      const inScores = scores.find((s) => s.cardId === txn.cardUsed);
+      actualCard = inScores || scoreCard(actualCardEntry, txn, redemptionPreference);
+    }
+  }
+
   if (scores.length === 0) {
     return {
       transactionId: txn.transactionId,
-      optimalCard: createEmptyScore(),
-      actualCard: null,
+      optimalCard: actualCard || createEmptyScore(),
+      actualCard,
       alternatives: [],
       missedValue: 0,
       wasOptimal: true,
@@ -140,11 +152,6 @@ export function calculateRewards(
 
   const optimalCard = scores[0];
   const alternatives = scores.slice(1, 4); // Top 3 alternatives
-
-  // Find the actual card used (if known)
-  const actualCard = txn.cardUsed
-    ? scores.find((s) => s.cardId === txn.cardUsed) || null
-    : null;
 
   // Calculate missed value
   // When cardUsed is null (e.g., Kafka-consumed transactions), missed value is indeterminate — set to 0

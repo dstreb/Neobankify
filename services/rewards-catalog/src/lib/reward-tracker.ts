@@ -72,6 +72,7 @@ export async function trackTransactionReward(params: {
   await db('rewards_earned').insert({
     id: rewardEarnedId,
     user_id: params.userId,
+    tenant_id: params.tenantId,
     transaction_id: params.transactionId,
     card_id: params.cardUsed,
     reward_program_id: null, // Can be linked later

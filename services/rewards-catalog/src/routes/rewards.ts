@@ -13,9 +13,8 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // Aggregate reward earnings from the rewards_earned table (not agent_decisions)
-    // rewards_earned table has no tenant_id column — filter by user_id only
     const earned = await db('rewards_earned')
-      .where({ user_id: userId })
+      .where({ user_id: userId, tenant_id: tenantId })
       .sum({ totalPoints: 'points_earned' })
       .sum({ totalCashback: 'cashback_earned' })
       .first();
