@@ -56,9 +56,12 @@ async function handleTransactionWebhook(
   itemId: string,
   _payload: Record<string, unknown>
 ): Promise<void> {
-  // Find the plaid item in our DB
+  // Find the plaid item in our DB — allow any status except 'disconnected' so that
+  // items in 'error' or 'login_required' state can still receive transaction webhooks
+  // and recover automatically when Plaid signals the issue is resolved.
   const plaidItem = await db('plaid_items')
-    .where({ plaid_item_id: itemId, status: 'active' })
+    .where({ plaid_item_id: itemId })
+    .whereNot({ status: 'disconnected' })
     .first();
 
   if (!plaidItem) {
