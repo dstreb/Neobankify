@@ -143,20 +143,14 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
   try {
     const userId = req.headers['x-user-id'] as string;
 
-    await db.transaction(async (trx) => {
+    const result = await db.transaction(async (trx) => {
       // Verify target card exists before modifying any data
       const targetCard = await trx('user_cards')
         .where({ id: req.params.id, user_id: userId, status: 'active' })
         .first();
 
       if (!targetCard) {
-        res.status(404).json({
-          type: 'https://api.neobank.io/errors/not-found',
-          title: 'Card Not Found',
-          status: 404,
-          detail: 'Card not found.',
-        });
-        return;
+        return { found: false };
       }
 
       // Unset existing primary cards
@@ -168,21 +162,28 @@ cardsRouter.patch('/:id/primary', async (req: Request, res: Response): Promise<v
       await trx('user_cards')
         .where({ id: req.params.id, user_id: userId })
         .update({ is_primary: true });
+
+      return { found: true };
     });
 
-    // Only send success if response hasn't been sent (404 case)
-    if (!res.headersSent) {
-      res.json({ success: true, data: { message: 'Primary card updated.' } });
+    if (!result.found) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Card Not Found',
+        status: 404,
+        detail: 'Card not found.',
+      });
+      return;
     }
+
+    res.json({ success: true, data: { message: 'Primary card updated.' } });
   } catch (error) {
     logger.error('Failed to set primary card', { error: (error as Error).message });
-    if (!res.headersSent) {
-      res.status(500).json({
-        type: 'https://api.neobank.io/errors/internal',
-        title: 'Internal Error',
-        status: 500,
-        detail: 'Failed to set primary card.',
-      });
-    }
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to set primary card.',
+    });
   }
 });

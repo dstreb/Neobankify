@@ -24,11 +24,11 @@ export async function refreshToken(refreshTokenStr: string): Promise<ApiResponse
 }
 
 export async function getProfile(): Promise<ApiResponse<User>> {
-  const response = await apiClient.get<ApiResponse<User>>('/v1/auth/me');
+  const response = await apiClient.get<ApiResponse<User>>('/v1/users/me');
   return response.data;
 }
 
 export async function updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-  const response = await apiClient.put<ApiResponse<User>>('/v1/auth/me', data);
+  const response = await apiClient.patch<ApiResponse<User>>('/v1/users/me', data);
   return response.data;
 }

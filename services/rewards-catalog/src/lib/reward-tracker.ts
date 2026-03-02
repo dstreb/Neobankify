@@ -96,7 +96,7 @@ export async function trackTransactionReward(params: {
       user_id: params.userId,
       agent_type: 'rewards_optimization',
       decision_type: calculation.recommendation.type,
-      decision: JSON.stringify({
+      decision: {
         action: calculation.recommendation.title,
         optimalCardId: calculation.recommendation.data.optimalCardId,
         optimalCardName: calculation.recommendation.data.optimalCardName,
@@ -105,7 +105,7 @@ export async function trackTransactionReward(params: {
         pointsEarned: calculation.optimalCard.pointsEarned,
         cashbackEarned: calculation.optimalCard.cashbackEarned,
         missedValue: calculation.missedValue,
-      }),
+      },
       reasoning: calculation.recommendation.explanation,
       confidence_score: calculation.recommendation.confidenceScore,
       input_features: [
@@ -138,7 +138,7 @@ export async function trackTransactionReward(params: {
       explanation: calculation.recommendation.explanation,
       confidence_score: calculation.recommendation.confidenceScore,
       value_delta: calculation.recommendation.valueDelta,
-      data: JSON.stringify(calculation.recommendation.data),
+      data: calculation.recommendation.data,
       status: 'recommended',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       created_at: new Date(),

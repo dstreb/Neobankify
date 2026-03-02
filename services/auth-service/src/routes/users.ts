@@ -92,12 +92,15 @@ userRouter.patch('/me', async (req: Request, res: Response): Promise<void> => {
       updates.risk_profile = parsed.data.riskProfile;
     }
     if (parsed.data.preferences) {
-      // Merge with existing preferences
+      // Merge with existing preferences (JSONB column — pg driver returns parsed objects)
       const existing = await db('users').where({ id: userId, tenant_id: tenantId }).select('preferences').first();
-      updates.preferences = JSON.stringify({
-        ...existing?.preferences,
+      const existingPrefs = typeof existing?.preferences === 'string'
+        ? JSON.parse(existing.preferences)
+        : existing?.preferences || {};
+      updates.preferences = {
+        ...existingPrefs,
         ...parsed.data.preferences,
-      });
+      };
     }
 
     await db('users')
@@ -174,7 +177,7 @@ userRouter.post('/me/goals', async (req: Request, res: Response): Promise<void> 
       id: goalId,
       user_id: userId,
       goal_type: parsed.data.type,
-      parameters: JSON.stringify(parsed.data.parameters),
+      parameters: parsed.data.parameters,
       priority: parsed.data.priority,
       status: 'active',
       created_at: new Date(),

@@ -29,7 +29,7 @@ export const authMiddleware = (
   next: NextFunction
 ): void => {
   // Skip auth for public paths
-  if (PUBLIC_PATHS.some(path => req.path.startsWith(path))) {
+  if (PUBLIC_PATHS.some(path => req.path === path || req.path.startsWith(path + '/'))) {
     next();
     return;
   }

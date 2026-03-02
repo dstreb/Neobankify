@@ -43,8 +43,7 @@ export const tenantResolver = async (
       return;
     }
 
-    // TODO: Validate tenant ID against tenant registry (Redis cache -> DB fallback)
-    // For now, accept any tenant ID format (UUID)
+    // Validate tenant ID format (UUID)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(tenantId)) {
       res.status(400).json({
@@ -56,9 +55,54 @@ export const tenantResolver = async (
       return;
     }
 
+    // Validate tenant exists in the database
+    // Uses Redis cache with DB fallback for performance
+    const redis = req.app.locals.redis;
+    let tenantSlug = '';
+    const cacheKey = `tenant:${tenantId}`;
+
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          tenantSlug = cached;
+        }
+      } catch {
+        // Redis unavailable, fall through to DB
+      }
+    }
+
+    if (!tenantSlug) {
+      // DB fallback: validate tenant exists and is active
+      const knex = req.app.locals.db;
+      if (knex) {
+        const tenant = await knex('tenants')
+          .where({ id: tenantId, status: 'active' })
+          .select('slug')
+          .first();
+
+        if (!tenant) {
+          res.status(400).json({
+            type: 'https://api.neobank.io/errors/invalid-tenant',
+            title: 'Invalid Tenant',
+            status: 400,
+            detail: 'Tenant not found or is not active.',
+          });
+          return;
+        }
+
+        tenantSlug = tenant.slug;
+
+        // Cache for 5 minutes
+        if (redis) {
+          redis.set(cacheKey, tenantSlug, 'EX', 300).catch(() => {});
+        }
+      }
+    }
+
     req.tenant = {
       tenantId,
-      tenantSlug: '', // Will be resolved from tenant registry
+      tenantSlug,
     };
 
     next();
