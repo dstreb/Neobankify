@@ -46,7 +46,7 @@ underwritingRouter.post('/evaluate/:applicationId', async (req: Request, res: Re
 
     // Get loan product to determine loan type
     const loanProduct = await db('loan_products')
-      .where({ id: application.loan_product_id })
+      .where({ id: application.loan_product_id, tenant_id: tenantId })
       .first();
 
     // Estimate monthly debt payments from credit profile or housing payment
@@ -78,7 +78,8 @@ underwritingRouter.post('/evaluate/:applicationId', async (req: Request, res: Re
         dti_at_application: result.dti,
         risk_tier_at_application: result.riskGrade,
         approved_amount: result.approved ? Math.min(result.maxApprovedAmount, application.requested_amount) : null,
-        approved_apr: result.approved ? result.approvedRate : null,
+        // Store APR as percentage (e.g. 5.99) to match NUMERIC(6,3) column design
+        approved_apr: result.approved ? Math.round(result.approvedRate * 100 * 1000) / 1000 : null,
         approved_term_months: result.approved ? result.approvedTermMonths : null,
         monthly_payment: result.approved ? result.monthlyPayment : null,
         underwriting_decision: {
@@ -261,7 +262,7 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
       loan_number: loanNumber,
       principal_amount: application.approved_amount,
       current_balance: application.approved_amount,
-      apr: application.approved_apr,
+      apr: application.approved_apr, // Already stored as percentage (e.g. 5.99)
       term_months: application.approved_term_months,
       monthly_payment: application.monthly_payment,
       origination_fee: application.origination_fee || 0,
@@ -283,7 +284,8 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
       .update({ status: 'funded', funded_at: originatedAt, updated_at: new Date() });
 
     // Generate amortization schedule
-    const monthlyRate = application.approved_apr / 12;
+    // approved_apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
+    const monthlyRate = (application.approved_apr / 100) / 12;
     let balance = application.approved_amount;
     const scheduleRows = [];
 

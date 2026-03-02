@@ -44,7 +44,8 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Calculate interest allocation
-    const dailyRate = loan.apr / 365;
+    // loan.apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
+    const dailyRate = (loan.apr / 100) / 365;
     const lastPaymentDate = loan.next_payment_date || loan.funded_at;
     const daysSincePayment = Math.floor(
       (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
@@ -57,7 +58,7 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Determine payment number (next in sequence)
     const lastPayment = await db('loan_payments')
-      .where({ loan_id: loan.id })
+      .where({ loan_id: loan.id, tenant_id: tenantId })
       .orderBy('payment_number', 'desc')
       .first();
     const paymentNumber = lastPayment ? (lastPayment.payment_number as number) + 1 : 1;

@@ -328,7 +328,8 @@ loansRouter.post('/:id/payoff-quote', async (req: Request, res: Response): Promi
     }
 
     // Calculate payoff amount (current balance + accrued interest)
-    const dailyRate = loan.apr / 365;
+    // loan.apr is stored as percentage (e.g. 5.99), convert to decimal for calculation
+    const dailyRate = (loan.apr / 100) / 365;
     const lastPaymentDate = loan.next_payment_date || loan.funded_at;
     const daysSincePayment = Math.floor(
       (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
