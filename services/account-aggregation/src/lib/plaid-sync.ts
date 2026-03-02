@@ -146,7 +146,8 @@ export async function syncItemTransactions(params: {
   // Get account mapping (Plaid account ID -> our account ID)
   // Scope to this specific Plaid item to avoid cross-institution account mapping
   const accounts = await db('linked_accounts')
-    .where({ user_id: item.user_id, plaid_item_id: params.plaidItemDbId, provider: 'plaid', status: 'active' })
+    .where({ user_id: item.user_id, plaid_item_id: params.plaidItemDbId, provider: 'plaid' })
+    .whereIn('status', ['active', 'error'])
     .select('id', 'provider_account_id');
 
   const accountMap = new Map(accounts.map((a: { id: string; provider_account_id: string }) => [a.provider_account_id, a.id]));
@@ -220,6 +221,23 @@ export async function syncItemTransactions(params: {
       last_synced_at: new Date(),
       updated_at: new Date(),
     });
+
+  // If the item was in error/login_required state but sync succeeded, recover it
+  if (item.status !== 'active') {
+    await db('plaid_items')
+      .where({ id: params.plaidItemDbId })
+      .update({ status: 'active', error_code: null, error_message: null, updated_at: new Date() });
+
+    await db('linked_accounts')
+      .where({ plaid_item_id: params.plaidItemDbId, user_id: item.user_id })
+      .whereIn('status', ['error', 'login_required'])
+      .update({ status: 'active', updated_at: new Date() });
+
+    logger.info('Plaid item recovered from error state', {
+      itemId: params.plaidItemDbId,
+      previousStatus: item.status,
+    });
+  }
 
   logger.info('Transaction sync complete', {
     itemId: params.plaidItemDbId,

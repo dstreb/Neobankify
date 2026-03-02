@@ -76,9 +76,9 @@ export async function trackTransactionReward(params: {
     transaction_id: params.transactionId,
     card_id: params.cardUsed,
     reward_program_id: null, // Can be linked later
-    points_earned: calculation.actualCard ? calculation.actualCard.pointsEarned : 0,
-    cashback_earned: calculation.actualCard ? calculation.actualCard.cashbackEarned : 0,
-    earn_rate: calculation.actualCard ? calculation.actualCard.earnRate : 0,
+    points_earned: (calculation.actualCard || calculation.optimalCard).pointsEarned,
+    cashback_earned: (calculation.actualCard || calculation.optimalCard).cashbackEarned,
+    earn_rate: (calculation.actualCard || calculation.optimalCard).earnRate,
     was_optimal: calculation.wasOptimal,
     optimal_card_id: calculation.optimalCard.cardId || null,
     missed_value: calculation.missedValue,
@@ -158,8 +158,8 @@ export async function trackTransactionReward(params: {
 
     const updatedEnrichment = {
       ...existingEnrichment,
-      pointsEarned: calculation.actualCard ? calculation.actualCard.pointsEarned : 0,
-      cashbackEarned: calculation.actualCard ? calculation.actualCard.cashbackEarned : 0,
+      pointsEarned: (calculation.actualCard || calculation.optimalCard).pointsEarned,
+      cashbackEarned: (calculation.actualCard || calculation.optimalCard).cashbackEarned,
       wasOptimal: calculation.wasOptimal,
       missedValue: calculation.missedValue,
       optimalCardId: calculation.optimalCard.cardId,
@@ -177,8 +177,8 @@ export async function trackTransactionReward(params: {
   logger.info('Reward tracked', {
     transactionId: params.transactionId,
     userId: params.userId,
-    pointsEarned: calculation.actualCard ? calculation.actualCard.pointsEarned : 0,
-    cashbackEarned: calculation.actualCard ? calculation.actualCard.cashbackEarned : 0,
+    pointsEarned: (calculation.actualCard || calculation.optimalCard).pointsEarned,
+    cashbackEarned: (calculation.actualCard || calculation.optimalCard).cashbackEarned,
     wasOptimal: calculation.wasOptimal,
     missedValue: calculation.missedValue,
     hasRecommendation: agentDecisionId !== null,
@@ -187,8 +187,8 @@ export async function trackTransactionReward(params: {
   return {
     rewardEarnedId,
     agentDecisionId,
-    pointsEarned: calculation.actualCard ? calculation.actualCard.pointsEarned : 0,
-    cashbackEarned: calculation.actualCard ? calculation.actualCard.cashbackEarned : 0,
+    pointsEarned: (calculation.actualCard || calculation.optimalCard).pointsEarned,
+    cashbackEarned: (calculation.actualCard || calculation.optimalCard).cashbackEarned,
     wasOptimal: calculation.wasOptimal,
     missedValue: calculation.missedValue,
   };
