@@ -409,9 +409,10 @@ export async function verifyWebhookSignature(
 
     // 5. Check token is not expired (iat should be within 5 minutes)
     if (payload.iat) {
-      const age = Math.abs(Date.now() / 1000 - payload.iat);
-      if (age > 300) {
-        logger.warn('Plaid webhook JWT too old', { ageSeconds: age });
+      const now = Date.now() / 1000;
+      const age = now - payload.iat;
+      if (age > 300 || age < -30) {
+        logger.warn('Plaid webhook JWT expired or has future iat', { ageSeconds: age });
         return false;
       }
     }
