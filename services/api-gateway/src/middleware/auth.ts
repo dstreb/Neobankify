@@ -23,6 +23,8 @@ export const authMiddleware = (
 ): void => {
   // Skip auth for public paths (exact match, also accept trailing slash)
   if (PUBLIC_PATHS.some(path => req.path === path || req.path === path + '/')) {
+    // Strip any spoofed identity headers — public paths have no authenticated user
+    delete req.headers['x-user-id'];
     next();
     return;
   }

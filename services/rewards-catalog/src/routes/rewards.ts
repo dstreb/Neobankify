@@ -159,7 +159,7 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
         createdAt: r.created_at,
       })),
       meta: {
-        cursor: rows.length > 0 ? rows[rows.length - 1].created_at : null,
+        cursor: hasMore && rows.length > 0 ? rows[rows.length - 1].created_at : null,
         hasMore,
       },
     });
