@@ -3,6 +3,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import db from '../config/database';
 import { logger } from '../config/logger';
+import {
+  createPlaidClient,
+  createLinkToken,
+  PlaidTenantConfig,
+} from '../lib/plaid-client';
+import { handleLinkCompletion, refreshBalances, disconnectItem } from '../lib/plaid-sync';
+
+const DEFAULT_TENANT_CONFIG: PlaidTenantConfig = {
+  clientId: process.env.PLAID_CLIENT_ID || '',
+  secret: process.env.PLAID_SECRET || '',
+  environment: (process.env.PLAID_ENV as PlaidTenantConfig['environment']) || 'sandbox',
+  webhookUrl: process.env.PLAID_WEBHOOK_URL || 'https://api.neobank.io/v1/webhooks/plaid',
+  products: ['transactions', 'auth'],
+  countryCodes: ['US'],
+};
 
 export const accountsRouter = Router();
 
@@ -41,6 +56,38 @@ accountsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// --- POST /accounts/link-token ---
+// Creates a Plaid Link token for the frontend
+accountsRouter.post('/link-token', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const { accessToken } = req.body; // For update mode (re-auth)
+
+    const client = createPlaidClient(DEFAULT_TENANT_CONFIG);
+    const result = await createLinkToken(client, {
+      userId,
+      tenantConfig: DEFAULT_TENANT_CONFIG,
+      accessToken,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        linkToken: result.linkToken,
+        expiration: result.expiration,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to create link token', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to create link token.',
+    });
+  }
+});
+
 // --- POST /accounts/link ---
 const linkAccountSchema = z.object({
   publicToken: z.string(),
@@ -66,42 +113,23 @@ accountsRouter.post('/link', async (req: Request, res: Response): Promise<void> 
 
     const { publicToken, institutionId, institutionName } = parsed.data;
 
-    // TODO: Exchange public token for access token via Plaid API
-    // const plaidClient = getPlaidClient(tenantId);
-    // const exchangeResponse = await plaidClient.itemPublicTokenExchange({ public_token: publicToken });
-    // const accessToken = exchangeResponse.data.access_token;
-    // const itemId = exchangeResponse.data.item_id;
-
-    // Mock for now
-    const accessToken = `access-sandbox-${uuidv4()}`;
-    const itemId = `item-${uuidv4().substring(0, 8)}`;
-
-    // TODO: Fetch accounts from Plaid and store each one
-    const accountId = uuidv4();
-
-    await db('linked_accounts').insert({
-      id: accountId,
-      user_id: userId,
-      provider: 'plaid',
-      provider_account_id: itemId,
-      access_token_encrypted: accessToken, // TODO: Encrypt with KMS
-      account_type: 'checking',
-      institution_name: institutionName,
-      mask: '1234',
-      current_balance: 0,
-      available_balance: 0,
-      status: 'active',
-      created_at: new Date(),
+    // Use the full Plaid sync service for Link completion
+    const result = await handleLinkCompletion({
+      userId,
+      tenantId,
+      publicToken,
+      institutionId,
+      institutionName,
+      tenantConfig: DEFAULT_TENANT_CONFIG,
     });
 
-    logger.info('Account linked', { userId, accountId, institution: institutionName });
+    logger.info('Account linked via Plaid', { userId, itemId: result.itemId, accounts: result.accounts.length });
 
     res.status(201).json({
       success: true,
       data: {
-        accountId,
-        institutionName,
-        status: 'active',
+        itemId: result.itemId,
+        accounts: result.accounts,
         message: 'Account linked successfully. Initial sync in progress.',
       },
     });
@@ -116,16 +144,92 @@ accountsRouter.post('/link', async (req: Request, res: Response): Promise<void> 
   }
 });
 
+// --- POST /accounts/:id/refresh ---
+// Refresh balances for a linked account's Plaid item
+accountsRouter.post('/:id/refresh', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    const account = await db('linked_accounts')
+      .where({ id: req.params.id, user_id: userId, status: 'active' })
+      .first();
+
+    if (!account) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Account Not Found',
+        status: 404,
+        detail: 'Account not found.',
+      });
+      return;
+    }
+
+    if (!account.plaid_item_id) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Plaid Item Not Found',
+        status: 404,
+        detail: 'No active Plaid connection found for this account.',
+      });
+      return;
+    }
+
+    const updated = await refreshBalances({
+      plaidItemDbId: account.plaid_item_id,
+      tenantId,
+      tenantConfig: DEFAULT_TENANT_CONFIG,
+    });
+
+    res.json({
+      success: true,
+      data: { accountsUpdated: updated, message: 'Balances refreshed.' },
+    });
+  } catch (error) {
+    logger.error('Failed to refresh balances', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to refresh account balances.',
+    });
+  }
+});
+
 // --- DELETE /accounts/:id ---
 accountsRouter.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
-    await db('linked_accounts')
-      .where({ id: req.params.id, user_id: userId })
-      .update({ status: 'disconnected' });
+    // Find the specific account being deleted
+    const account = await db('linked_accounts')
+      .where({ id: req.params.id, user_id: userId, status: 'active' })
+      .first();
 
-    // TODO: Revoke Plaid access token
+    if (!account) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Account Not Found',
+        status: 404,
+        detail: 'Account not found.',
+      });
+      return;
+    }
+
+    if (account.plaid_item_id) {
+      await disconnectItem({
+        plaidItemDbId: account.plaid_item_id,
+        userId,
+        tenantId,
+        tenantConfig: DEFAULT_TENANT_CONFIG,
+      });
+    } else {
+      // Non-Plaid account or legacy account without plaid_item_id
+      await db('linked_accounts')
+        .where({ id: req.params.id, user_id: userId })
+        .update({ status: 'disconnected', updated_at: new Date() });
+    }
 
     res.json({ success: true, data: { message: 'Account unlinked.' } });
   } catch (error) {

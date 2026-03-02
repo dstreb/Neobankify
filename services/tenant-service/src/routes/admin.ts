@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import db from '../config/database';
 import redis from '../config/redis';
+import { rawRedis } from '../config/redis';
 import { logger } from '../config/logger';
 
 export const adminRouter = Router();
@@ -158,8 +159,12 @@ adminRouter.patch('/tenants/:id', async (req: Request, res: Response): Promise<v
 
     await db('tenants').where({ id: tenantId }).update(updates);
 
-    // Invalidate cache
-    await redis.del(tenantId);
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
+    await Promise.all([
+      redis.del(tenantId),
+      rawRedis.del(`gw-tenant:${tenantId}`),
+    ]);
 
     res.json({ success: true, data: { message: 'Tenant updated.' } });
   } catch (error) {
@@ -189,15 +194,41 @@ adminRouter.patch('/tenants/:id/features', async (req: Request, res: Response): 
       return;
     }
 
-    const mergedFlags = { ...existing.feature_flags, ...req.body };
+    // Validate feature flag input using the same schema as POST /admin/tenants
+    const featureFlagSchema = z.object({
+      rewardsOptimization: z.boolean().optional(),
+      idleCashSweep: z.boolean().optional(),
+      behavioralLearning: z.boolean().optional(),
+      cardRouting: z.boolean().optional(),
+      investing: z.boolean().optional(),
+      trading: z.boolean().optional(),
+      lending: z.boolean().optional(),
+    }).strict(); // strict() rejects unknown keys
+
+    const parsed = featureFlagSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        type: 'https://api.neobank.io/errors/validation',
+        title: 'Validation Error',
+        status: 400,
+        detail: parsed.error.errors.map(e => `${e.path}: ${e.message}`).join(', '),
+      });
+      return;
+    }
+
+    const mergedFlags = { ...existing.feature_flags, ...parsed.data };
 
     await db('tenants').where({ id: tenantId }).update({
       feature_flags: JSON.stringify(mergedFlags),
       updated_at: new Date(),
     });
 
-    // Invalidate cache
-    await redis.del(tenantId);
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
+    await Promise.all([
+      redis.del(tenantId),
+      rawRedis.del(`gw-tenant:${tenantId}`),
+    ]);
 
     logger.info('Feature flags updated', { tenantId, flags: mergedFlags });
 
@@ -223,7 +254,12 @@ adminRouter.post('/tenants/:id/theme', async (req: Request, res: Response): Prom
       updated_at: new Date(),
     });
 
-    await redis.del(tenantId);
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
+    await Promise.all([
+      redis.del(tenantId),
+      rawRedis.del(`gw-tenant:${tenantId}`),
+    ]);
 
     res.json({ success: true, data: { message: 'Theme updated.' } });
   } catch (error) {

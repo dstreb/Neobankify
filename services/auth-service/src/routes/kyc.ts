@@ -1,8 +1,68 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import db from '../config/database';
 import { producer } from '../config/kafka';
 import { logger } from '../config/logger';
+
+const PERSONA_WEBHOOK_SECRET = process.env.PERSONA_WEBHOOK_SECRET || '';
+
+/**
+ * Verify Persona webhook signature using HMAC-SHA256.
+ * Returns true if signature is valid or if in sandbox mode with no secret configured.
+ */
+function verifyPersonaSignature(rawBody: string, signatureHeader: string | undefined): boolean {
+  // In sandbox/dev mode with no secret configured, allow unverified webhooks
+  if (!PERSONA_WEBHOOK_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('PERSONA_WEBHOOK_SECRET is not configured in production');
+      return false;
+    }
+    logger.warn('Persona webhook secret not configured — allowing unverified webhook (non-production)');
+    return true;
+  }
+
+  if (!signatureHeader) {
+    logger.warn('Missing Persona-Signature header');
+    return false;
+  }
+
+  // Persona sends signature as "t=<timestamp>,v1=<hmac>"
+  const parts = signatureHeader.split(',');
+  const timestampPart = parts.find(p => p.startsWith('t='));
+  const signaturePart = parts.find(p => p.startsWith('v1='));
+
+  if (!timestampPart || !signaturePart) {
+    logger.warn('Invalid Persona-Signature header format');
+    return false;
+  }
+
+  const timestamp = timestampPart.slice(2);
+  const signature = signaturePart.slice(3);
+
+  // Verify the signature
+  const payload = `${timestamp}.${rawBody}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', PERSONA_WEBHOOK_SECRET)
+    .update(payload)
+    .digest('hex');
+
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expectedBuf = Buffer.from(expectedSignature, 'hex');
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+    logger.warn('Persona webhook signature mismatch');
+    return false;
+  }
+
+  // Reject webhooks older than 5 minutes or more than 30s in the future (replay/future-dated protection)
+  const webhookAge = Date.now() / 1000 - parseInt(timestamp, 10);
+  if (webhookAge > 300 || webhookAge < -30) {
+    logger.warn('Persona webhook timestamp out of range', { ageSeconds: webhookAge });
+    return false;
+  }
+
+  return true;
+}
 
 export const kycRouter = Router();
 
@@ -142,7 +202,16 @@ kycRouter.post('/initiate', async (req: Request, res: Response): Promise<void> =
 // --- POST /auth/kyc/webhook (called by Persona servers) ---
 kycRouter.post('/webhook', async (req: Request, res: Response): Promise<void> => {
   try {
-    // TODO: Verify Persona webhook signature
+    // Verify Persona webhook signature
+    const rawBody = (req as Request & { rawBody?: string }).rawBody || JSON.stringify(req.body);
+    const signatureHeader = req.headers['persona-signature'] as string | undefined;
+
+    if (!verifyPersonaSignature(rawBody, signatureHeader)) {
+      logger.warn('KYC webhook signature verification failed');
+      res.status(401).json({ error: 'Invalid webhook signature' });
+      return;
+    }
+
     const { data } = req.body;
 
     if (!data?.attributes?.inquiry_id) {

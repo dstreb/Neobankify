@@ -17,6 +17,8 @@ const JWT_REFRESH_TTL = '7d';
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
+  firstName: z.string().min(1).max(255).optional(),
+  lastName: z.string().min(1).max(255).optional(),
 });
 
 const loginSchema = z.object({
@@ -38,7 +40,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, firstName, lastName } = parsed.data;
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // Check if user already exists
@@ -66,15 +68,17 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
       tenant_id: tenantId,
       email,
       password_hash: passwordHash,
+      first_name: firstName || null,
+      last_name: lastName || null,
       kyc_status: 'pending',
       risk_profile: 'moderate',
-      goals: JSON.stringify([]),
-      preferences: JSON.stringify({
+      goals: [],
+      preferences: {
         notificationFrequency: 'daily',
         autoSweepEnabled: false,
         recommendationStyle: 'proactive',
         preferredRedemptionType: 'cashback',
-      }),
+      },
       created_at: new Date(),
       updated_at: new Date(),
     });

@@ -8,7 +8,11 @@ import { connectKafka } from './config/kafka';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req: express.Request, _res, buf) => {
+    (req as express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+  },
+}));
 
 // Routes
 app.use('/auth', authRouter);

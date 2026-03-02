@@ -18,9 +18,9 @@ export async function getCard(cardId: string): Promise<ApiResponse<Card>> {
 
 export async function addCard(data: {
   cardName: string;
+  issuer: string;
   lastFour: string;
   network: string;
-  expirationDate: string;
   rewardProgramId?: string;
   isPrimary?: boolean;
 }): Promise<ApiResponse<Card>> {

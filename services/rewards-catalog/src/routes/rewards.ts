@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import db from '../config/database';
 import { logger } from '../config/logger';
+import { trackTransactionReward } from '../lib/reward-tracker';
 
 export const rewardsRouter = Router();
 
@@ -12,12 +12,11 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Aggregate reward earnings
-    const earned = await db('agent_decisions')
-      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
-      .whereRaw("decision->>'pointsEarned' IS NOT NULL")
-      .sum({ totalPoints: db.raw("(decision->>'pointsEarned')::numeric") })
-      .sum({ totalCashback: db.raw("(decision->>'cashbackEarned')::numeric") })
+    // Aggregate reward earnings from the rewards_earned table (not agent_decisions)
+    const earned = await db('rewards_earned')
+      .where({ user_id: userId, tenant_id: tenantId })
+      .sum({ totalPoints: 'points_earned' })
+      .sum({ totalCashback: 'cashback_earned' })
       .first();
 
     // Get missed value
@@ -30,7 +29,7 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
     res.json({
       success: true,
       data: {
-        totalPointsEarned: earned?.totalPoints || 0,
+        totalPointsEarned: parseFloat(String(earned?.totalPoints || 0)),
         totalCashbackEarned: parseFloat(String(earned?.totalCashback || 0)).toFixed(2),
         totalMissedValue: parseFloat(String(missed?.missedValue || 0)).toFixed(2),
         period: 'all_time',
@@ -91,7 +90,10 @@ rewardsRouter.get('/offers', async (req: Request, res: Response): Promise<void> 
     // Get user's cards and their associated reward programs
     const cards = await db('user_cards')
       .where({ 'user_cards.user_id': userId, 'user_cards.status': 'active' })
-      .join('reward_programs', 'user_cards.reward_program_id', 'reward_programs.id')
+      .join('reward_programs', function() {
+        this.on('user_cards.reward_program_id', 'reward_programs.id')
+            .andOn('reward_programs.tenant_id', '=', db.raw('?', [tenantId]));
+      })
       .select(
         'user_cards.card_name',
         'reward_programs.name as program_name',
@@ -129,8 +131,8 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
     const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 100);
     const cursor = req.query.cursor as string;
 
-    let query = db('agent_decisions')
-      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
+    let query = db('rewards_earned')
+      .where({ user_id: userId, tenant_id: tenantId })
       .orderBy('created_at', 'desc')
       .limit(limit + 1);
 
@@ -138,23 +140,26 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
       query = query.where('created_at', '<', cursor);
     }
 
-    const decisions = await query;
-    const hasMore = decisions.length > limit;
-    if (hasMore) decisions.pop();
+    const rows = await query;
+    const hasMore = rows.length > limit;
+    if (hasMore) rows.pop();
 
     res.json({
       success: true,
-      data: decisions.map(d => ({
-        id: d.id,
-        decisionType: d.decision_type,
-        decision: d.decision,
-        reasoning: d.reasoning,
-        confidenceScore: d.confidence_score,
-        outcome: d.outcome,
-        createdAt: d.created_at,
+      data: rows.map(r => ({
+        id: r.id,
+        transactionId: r.transaction_id,
+        cardId: r.card_id,
+        rewardProgramId: r.reward_program_id,
+        pointsEarned: r.points_earned,
+        cashbackEarned: r.cashback_earned,
+        earnRate: r.earn_rate,
+        wasOptimal: r.was_optimal,
+        missedValue: r.missed_value,
+        createdAt: r.created_at,
       })),
       meta: {
-        cursor: decisions.length > 0 ? decisions[decisions.length - 1].created_at : null,
+        cursor: hasMore && rows.length > 0 ? rows[rows.length - 1].created_at : null,
         hasMore,
       },
     });
@@ -165,6 +170,79 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
       title: 'Internal Error',
       status: 500,
       detail: 'Failed to fetch rewards history.',
+    });
+  }
+});
+
+// --- POST /rewards/track ---
+// Track reward earnings for a specific enriched transaction
+const trackSchema = z.object({
+  transactionId: z.string().uuid(),
+  amount: z.number().positive(),
+  category: z.string().min(1),
+  subcategory: z.string().min(1),
+  merchantNormalized: z.string().min(1),
+  merchantCanonical: z.string().nullable().optional(),
+  cardUsed: z.string().uuid().nullable().optional(),
+  redemptionPreference: z.enum(['cashback', 'travel', 'transfer', 'gift_cards']).optional(),
+});
+
+rewardsRouter.post('/track', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    const parsed = trackSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        type: 'https://api.neobank.io/errors/validation',
+        title: 'Validation Error',
+        status: 400,
+        detail: parsed.error.errors.map(e => `${e.path}: ${e.message}`).join(', '),
+      });
+      return;
+    }
+
+    const result = await trackTransactionReward({
+      transactionId: parsed.data.transactionId,
+      userId,
+      tenantId,
+      amount: parsed.data.amount,
+      category: parsed.data.category,
+      subcategory: parsed.data.subcategory,
+      merchantNormalized: parsed.data.merchantNormalized,
+      merchantCanonical: parsed.data.merchantCanonical ?? null,
+      cardUsed: parsed.data.cardUsed ?? null,
+      redemptionPreference: parsed.data.redemptionPreference,
+    });
+
+    if (!result) {
+      res.json({
+        success: true,
+        data: { tracked: false, reason: 'No cards in portfolio' },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        tracked: true,
+        rewardEarnedId: result.rewardEarnedId,
+        pointsEarned: result.pointsEarned,
+        cashbackEarned: result.cashbackEarned,
+        wasOptimal: result.wasOptimal,
+        missedValue: result.missedValue,
+        hasRecommendation: result.agentDecisionId !== null,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to track reward', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to track reward.',
     });
   }
 });

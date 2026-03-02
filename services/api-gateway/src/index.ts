@@ -10,9 +10,16 @@ import { errorHandler } from './middleware/error-handler';
 import { healthRouter } from './routes/health';
 import { proxyRouter } from './routes/proxy';
 import { logger } from './config/logger';
+import db from './config/database';
+import redis from './config/redis';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize app.locals so tenant-resolver can validate tenants
+// against the database (with Redis cache) instead of silently accepting any UUID.
+app.locals.db = db;
+app.locals.redis = redis;
 
 // Security
 app.use(helmet());

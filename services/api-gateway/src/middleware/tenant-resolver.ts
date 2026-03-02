@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
+import { NO_AUTH_NO_TENANT_PATHS } from '../config/paths';
 
 export interface TenantContext {
   tenantId: string;
@@ -25,8 +26,9 @@ export const tenantResolver = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Skip tenant resolution for health checks and external webhooks
-    if (req.path.startsWith('/health') || req.path.startsWith('/v1/auth/kyc/webhook')) {
+    // Skip tenant resolution for paths that need neither auth nor tenant context.
+    // Paths are defined in config/paths.ts (single source of truth shared with auth middleware).
+    if (NO_AUTH_NO_TENANT_PATHS.some(p => req.path === p || req.path === p + '/')) {
       next();
       return;
     }
@@ -43,8 +45,7 @@ export const tenantResolver = async (
       return;
     }
 
-    // TODO: Validate tenant ID against tenant registry (Redis cache -> DB fallback)
-    // For now, accept any tenant ID format (UUID)
+    // Validate tenant ID format (UUID)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(tenantId)) {
       res.status(400).json({
@@ -56,9 +57,68 @@ export const tenantResolver = async (
       return;
     }
 
+    // Validate tenant exists in the database
+    // Uses Redis cache with DB fallback for performance
+    const redis = req.app.locals.redis;
+    let tenantSlug = '';
+    // Use raw tenantId as cache key — the gateway Redis client has keyPrefix:'gw-tenant:'
+    // (separate from the tenant-service's 'tenant:' prefix) to avoid cache format collisions.
+    // The gateway caches plain slug strings; the tenant-service caches full JSON config objects.
+    const cacheKey = tenantId;
+
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          tenantSlug = cached;
+        }
+      } catch {
+        // Redis unavailable, fall through to DB
+      }
+    }
+
+    if (!tenantSlug) {
+      // DB fallback: validate tenant exists and is active
+      const knex = req.app.locals.db;
+      if (knex) {
+        const tenant = await knex('tenants')
+          .where({ id: tenantId, status: 'active' })
+          .select('slug')
+          .first();
+
+        if (!tenant) {
+          res.status(400).json({
+            type: 'https://api.neobank.io/errors/invalid-tenant',
+            title: 'Invalid Tenant',
+            status: 400,
+            detail: 'Tenant not found or is not active.',
+          });
+          return;
+        }
+
+        tenantSlug = tenant.slug;
+
+        // Cache for 5 minutes
+        if (redis) {
+          redis.set(cacheKey, tenantSlug, 'EX', 300).catch(() => {});
+        }
+      }
+    }
+
+    // If neither Redis nor DB could validate the tenant, reject the request
+    if (!tenantSlug) {
+      res.status(503).json({
+        type: 'https://api.neobank.io/errors/service-unavailable',
+        title: 'Service Unavailable',
+        status: 503,
+        detail: 'Unable to validate tenant. Please try again later.',
+      });
+      return;
+    }
+
     req.tenant = {
       tenantId,
-      tenantSlug: '', // Will be resolved from tenant registry
+      tenantSlug,
     };
 
     next();

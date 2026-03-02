@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../config/logger';
+import { PUBLIC_PATHS } from '../config/paths';
 
 interface JwtPayload {
   sub: string;
@@ -11,14 +12,6 @@ interface JwtPayload {
   exp: number;
 }
 
-const PUBLIC_PATHS = [
-  '/health',
-  '/v1/auth/register',
-  '/v1/auth/login',
-  '/v1/auth/refresh',
-  '/v1/auth/kyc/webhook',
-];
-
 /**
  * Validates JWT tokens and extracts user identity.
  * Uses RS256 with public key from JWKS endpoint (Auth0/Cognito).
@@ -28,8 +21,10 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  // Skip auth for public paths
-  if (PUBLIC_PATHS.some(path => req.path.startsWith(path))) {
+  // Skip auth for public paths (exact match, also accept trailing slash)
+  if (PUBLIC_PATHS.some(path => req.path === path || req.path === path + '/')) {
+    // Strip any spoofed identity headers — public paths have no authenticated user
+    delete req.headers['x-user-id'];
     next();
     return;
   }

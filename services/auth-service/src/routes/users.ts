@@ -23,7 +23,7 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
 
     const user = await db('users')
       .where({ id: userId, tenant_id: tenantId })
-      .select('id', 'email', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
+      .select('id', 'email', 'first_name', 'last_name', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
       .first();
 
     if (!user) {
@@ -41,6 +41,8 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
       data: {
         id: user.id,
         email: user.email,
+        firstName: user.first_name || null,
+        lastName: user.last_name || null,
         kycStatus: user.kyc_status,
         riskProfile: user.risk_profile,
         goals: user.goals,
@@ -92,12 +94,15 @@ userRouter.patch('/me', async (req: Request, res: Response): Promise<void> => {
       updates.risk_profile = parsed.data.riskProfile;
     }
     if (parsed.data.preferences) {
-      // Merge with existing preferences
+      // Merge with existing preferences (JSONB column — pg driver returns parsed objects)
       const existing = await db('users').where({ id: userId, tenant_id: tenantId }).select('preferences').first();
-      updates.preferences = JSON.stringify({
-        ...existing?.preferences,
+      const existingPrefs = typeof existing?.preferences === 'string'
+        ? JSON.parse(existing.preferences)
+        : existing?.preferences || {};
+      updates.preferences = {
+        ...existingPrefs,
         ...parsed.data.preferences,
-      });
+      };
     }
 
     await db('users')
@@ -174,7 +179,7 @@ userRouter.post('/me/goals', async (req: Request, res: Response): Promise<void> 
       id: goalId,
       user_id: userId,
       goal_type: parsed.data.type,
-      parameters: JSON.stringify(parsed.data.parameters),
+      parameters: parsed.data.parameters,
       priority: parsed.data.priority,
       status: 'active',
       created_at: new Date(),
