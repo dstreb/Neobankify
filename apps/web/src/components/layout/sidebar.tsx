@@ -14,6 +14,9 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  TrendingUp,
+  BarChart3,
+  Landmark,
 } from 'lucide-react';
 
 const navigation = [
@@ -22,6 +25,9 @@ const navigation = [
   { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
   { name: 'Cards', href: '/cards', icon: CreditCard },
   { name: 'Rewards & AI', href: '/rewards', icon: Gift },
+  { name: 'Investing', href: '/investing', icon: TrendingUp },
+  { name: 'Trading', href: '/trading', icon: BarChart3 },
+  { name: 'Lending', href: '/lending', icon: Landmark },
   { name: 'Compliance', href: '/compliance', icon: ShieldCheck },
   { name: 'Tenants', href: '/tenants', icon: Building2 },
   { name: 'Settings', href: '/settings', icon: Settings },

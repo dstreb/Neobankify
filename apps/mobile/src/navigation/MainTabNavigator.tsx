@@ -10,6 +10,9 @@ import { RewardsNavigator } from './RewardsNavigator';
 import { TransactionsNavigator } from './TransactionsNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
 import { AINavigator } from './AINavigator';
+import { InvestingNavigator } from './InvestingNavigator';
+import { TradingNavigator } from './TradingNavigator';
+import { LendingNavigator } from './LendingNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -18,6 +21,9 @@ const TAB_ICONS: Record<keyof MainTabParamList, { focused: keyof typeof Ionicons
   Cards: { focused: 'card', unfocused: 'card-outline' },
   AI: { focused: 'sparkles', unfocused: 'sparkles-outline' },
   Rewards: { focused: 'gift', unfocused: 'gift-outline' },
+  Investing: { focused: 'trending-up', unfocused: 'trending-up-outline' },
+  Trading: { focused: 'bar-chart', unfocused: 'bar-chart-outline' },
+  Lending: { focused: 'cash', unfocused: 'cash-outline' },
   Transactions: { focused: 'receipt', unfocused: 'receipt-outline' },
   Profile: { focused: 'person', unfocused: 'person-outline' },
 };
@@ -56,6 +62,15 @@ export function MainTabNavigator() {
       <Tab.Screen name="AI" component={AINavigator} options={{ tabBarLabel: 'AI Assistant' }} />
       {featureFlags.rewardsEnabled && (
         <Tab.Screen name="Rewards" component={RewardsNavigator} />
+      )}
+      {featureFlags.investingEnabled && (
+        <Tab.Screen name="Investing" component={InvestingNavigator} />
+      )}
+      {featureFlags.tradingEnabled && (
+        <Tab.Screen name="Trading" component={TradingNavigator} />
+      )}
+      {featureFlags.lendingEnabled && (
+        <Tab.Screen name="Lending" component={LendingNavigator} />
       )}
       <Tab.Screen name="Transactions" component={TransactionsNavigator} />
       <Tab.Screen name="Profile" component={ProfileNavigator} />

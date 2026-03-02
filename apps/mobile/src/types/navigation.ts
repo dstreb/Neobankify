@@ -24,6 +24,9 @@ export type MainTabParamList = {
   Cards: undefined;
   AI: undefined;
   Rewards: undefined;
+  Investing: undefined;
+  Trading: undefined;
+  Lending: undefined;
   Transactions: undefined;
   Profile: undefined;
 };
@@ -62,6 +65,29 @@ export type ProfileStackParamList = {
   LinkedAccounts: undefined;
 };
 
+export type InvestingStackParamList = {
+  InvestingDashboard: undefined;
+  SuitabilityAssessment: undefined;
+  HoldingDetail: { holdingId: string };
+  InvestingOrder: { side?: string };
+  InvestingSettings: undefined;
+};
+
+export type TradingStackParamList = {
+  TradingDashboard: undefined;
+  TradeOrder: { side?: string };
+  PositionDetail: { positionId: string };
+  AISignals: undefined;
+  PaperTrading: undefined;
+};
+
+export type LendingStackParamList = {
+  LendingDashboard: undefined;
+  LoanApplication: undefined;
+  LoanDetail: { loanId: string };
+  MakePayment: { loanId?: string };
+};
+
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
@@ -95,3 +121,12 @@ export type ProfileScreenProps<T extends keyof ProfileStackParamList> =
 
 export type AIScreenProps<T extends keyof AIStackParamList> =
   NativeStackScreenProps<AIStackParamList, T>;
+
+export type InvestingScreenProps<T extends keyof InvestingStackParamList> =
+  NativeStackScreenProps<InvestingStackParamList, T>;
+
+export type TradingScreenProps<T extends keyof TradingStackParamList> =
+  NativeStackScreenProps<TradingStackParamList, T>;
+
+export type LendingScreenProps<T extends keyof LendingStackParamList> =
+  NativeStackScreenProps<LendingStackParamList, T>;
