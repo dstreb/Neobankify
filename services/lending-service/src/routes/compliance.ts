@@ -119,8 +119,8 @@ complianceRouter.get('/fair-lending-report', async (req: Request, res: Response)
       .first();
 
     const approvedCount = await db('loan_applications')
-      .where({ tenant_id: tenantId, status: 'approved' })
-      .orWhere({ tenant_id: tenantId, status: 'originated' })
+      .where({ tenant_id: tenantId })
+      .whereIn('status', ['approved', 'originated'])
       .whereBetween('submitted_at', [startDate, endDate])
       .count('id as count')
       .first();
@@ -147,12 +147,13 @@ complianceRouter.get('/fair-lending-report', async (req: Request, res: Response)
     }
 
     // Average decision score by outcome
+    // decision score is stored inside the underwriting_decision JSONB column
     const avgScores = await db('loan_applications')
       .where({ tenant_id: tenantId })
       .whereBetween('submitted_at', [startDate, endDate])
-      .whereNotNull('decision_score')
+      .whereNotNull('underwriting_decision')
       .select('status')
-      .avg('decision_score as avg_score')
+      .avg(db.raw("(underwriting_decision->>'decisionScore')::numeric as avg_score"))
       .groupBy('status');
 
     // Rate distribution for approved loans
