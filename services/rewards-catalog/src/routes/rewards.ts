@@ -29,7 +29,7 @@ rewardsRouter.get('/summary', async (req: Request, res: Response): Promise<void>
     res.json({
       success: true,
       data: {
-        totalPointsEarned: earned?.totalPoints || 0,
+        totalPointsEarned: parseFloat(String(earned?.totalPoints || 0)),
         totalCashbackEarned: parseFloat(String(earned?.totalCashback || 0)).toFixed(2),
         totalMissedValue: parseFloat(String(missed?.missedValue || 0)).toFixed(2),
         period: 'all_time',
