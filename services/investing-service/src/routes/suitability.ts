@@ -69,9 +69,10 @@ suitabilityRouter.post('/assess', async (req: Request, res: Response): Promise<v
       id: uuidv4(),
       tenant_id: tenantId,
       user_id: userId,
+      event_type: 'audit.immutable',
       action: 'suitability_assessment',
-      resource_type: 'investment_profile',
-      resource_id: assessmentId,
+      entity_type: 'investment_profile',
+      entity_id: assessmentId,
       before_state: null,
       after_state: {
         riskScore: result.riskScore,

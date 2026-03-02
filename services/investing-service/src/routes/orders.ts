@@ -99,9 +99,10 @@ ordersRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       id: uuidv4(),
       tenant_id: tenantId,
       user_id: userId,
+      event_type: 'audit.immutable',
       action: 'investment_order_placed',
-      resource_type: 'investment_order',
-      resource_id: orderId,
+      entity_type: 'investment_order',
+      entity_id: orderId,
       before_state: null,
       after_state: {
         ticker: parsed.data.ticker,

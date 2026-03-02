@@ -95,9 +95,10 @@ loansRouter.post('/apply', async (req: Request, res: Response): Promise<void> =>
       id: uuidv4(),
       tenant_id: tenantId,
       user_id: userId,
+      event_type: 'audit.immutable',
       action: 'loan_application_submitted',
-      resource_type: 'loan_application',
-      resource_id: applicationId,
+      entity_type: 'loan_application',
+      entity_id: applicationId,
       before_state: null,
       after_state: {
         loanProductId: parsed.data.loanProductId,

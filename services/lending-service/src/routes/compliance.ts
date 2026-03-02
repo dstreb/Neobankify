@@ -235,7 +235,7 @@ complianceRouter.get('/decision-audit/:applicationId', async (req: Request, res:
 
     // Get all audit log entries for this application
     const auditEntries = await db('audit_log')
-      .where({ resource_id: application.id, tenant_id: tenantId })
+      .where({ entity_id: application.id, tenant_id: tenantId })
       .orderBy('created_at', 'asc');
 
     // Get agent decision

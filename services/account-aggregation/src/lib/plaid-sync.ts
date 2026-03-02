@@ -163,7 +163,9 @@ export async function syncItemTransactions(params: {
         tenant_id: params.tenantId,
         account_id: accountId,
         provider_transaction_id: txn.transactionId,
-        amount: Math.abs(txn.amount), // Plaid uses negative for debits
+        // Plaid: positive = money leaving account (debit), negative = money entering (credit/refund)
+        // Store with sign preserved so downstream consumers can distinguish debits from credits
+        amount: txn.amount,
         merchant_name: txn.merchantName || txn.name,
         mcc_code: null, // MCC not directly available from transactions/sync
         category: txn.personalFinanceCategory?.primary || txn.category[0] || null,
@@ -182,7 +184,7 @@ export async function syncItemTransactions(params: {
     await db('transactions')
       .where({ provider_transaction_id: txn.transactionId, tenant_id: params.tenantId })
       .update({
-        amount: Math.abs(txn.amount),
+        amount: txn.amount,
         merchant_name: txn.merchantName || txn.name,
         status: txn.pending ? 'pending' : 'posted',
         updated_at: new Date(),

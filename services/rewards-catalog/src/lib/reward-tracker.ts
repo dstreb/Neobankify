@@ -220,14 +220,21 @@ async function getUserCardPortfolio(
 
   for (const card of cards) {
     // Fetch active quarterly bonuses for this card
+    // Only include bonuses that are either not activation-required, or have been activated
     const bonuses = await db('quarterly_bonuses')
       .where({ card_id: card.card_id, tenant_id: tenantId })
       .where('quarter_end', '>', now)
+      .where(function() {
+        this.where('activation_required', false)
+            .orWhereNotNull('activated_at');
+      })
       .select('category', 'earn_rate', 'quarter_end');
 
     // Fetch active card-linked offers for this card
+    // Include both 'active' and 'activated' offers (activated = user explicitly opted in)
     const offers = await db('card_linked_offers')
-      .where({ card_id: card.card_id, tenant_id: tenantId, status: 'active' })
+      .where({ card_id: card.card_id, tenant_id: tenantId })
+      .whereIn('status', ['active', 'activated'])
       .where('expires_at', '>', now)
       .select('merchant_name', 'cashback_pct', 'max_cashback', 'expires_at');
 

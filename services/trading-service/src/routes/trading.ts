@@ -129,9 +129,10 @@ tradingRouter.post('/orders', async (req: Request, res: Response): Promise<void>
       id: uuidv4(),
       tenant_id: tenantId,
       user_id: userId,
+      event_type: 'audit.immutable',
       action: parsed.data.isPaperTrade ? 'paper_trade_order' : 'trading_order_placed',
-      resource_type: 'trading_order',
-      resource_id: orderId,
+      entity_type: 'trading_order',
+      entity_id: orderId,
       before_state: null,
       after_state: {
         ticker: parsed.data.ticker,
