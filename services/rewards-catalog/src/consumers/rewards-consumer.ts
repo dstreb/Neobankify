@@ -50,6 +50,15 @@ export async function startRewardsConsumer(): Promise<void> {
           return;
         }
 
+        // Skip negative amounts (refunds/credits from Plaid) — rewards only apply to spending
+        if (data.amount <= 0) {
+          logger.debug('Skipping non-positive amount transaction for rewards', {
+            transactionId: data.transactionId,
+            amount: data.amount,
+          });
+          return;
+        }
+
         await trackTransactionReward({
           transactionId: data.transactionId,
           userId: event.userId,
