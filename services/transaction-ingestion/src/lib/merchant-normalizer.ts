@@ -23,6 +23,7 @@ const MERCHANT_ALIASES: Array<{ pattern: RegExp; canonical: string; category?: s
   { pattern: /\bSAMS\s*CLUB\b/i, canonical: "SAM'S CLUB", category: 'groceries' },
   { pattern: /\bCOSTCO\b/i, canonical: 'COSTCO', category: 'groceries' },
   { pattern: /\bTARGET\b/i, canonical: 'TARGET', category: 'shopping' },
+  { pattern: /\bAMAZON\s*PRIME\b/i, canonical: 'AMAZON PRIME', category: 'subscriptions' },
   { pattern: /\bAMAZON\b/i, canonical: 'AMAZON', category: 'shopping' },
   { pattern: /\bAMZN\b/i, canonical: 'AMAZON', category: 'shopping' },
   { pattern: /\bWHOLE\s*FOODS\b/i, canonical: 'WHOLE FOODS', category: 'groceries' },
@@ -72,7 +73,6 @@ const MERCHANT_ALIASES: Array<{ pattern: RegExp; canonical: string; category?: s
   { pattern: /\bHBO\s*MAX\b/i, canonical: 'HBO MAX', category: 'subscriptions' },
   { pattern: /\bYOUTUBE\b/i, canonical: 'YOUTUBE', category: 'subscriptions' },
   { pattern: /\bAPPLE\s*TV/i, canonical: 'APPLE TV+', category: 'subscriptions' },
-  { pattern: /\bAMAZON\s*PRIME\b/i, canonical: 'AMAZON PRIME', category: 'subscriptions' },
 
   // Rideshare & transportation
   { pattern: /\bUBER\s*EATS\b/i, canonical: 'UBER EATS', category: 'dining' },

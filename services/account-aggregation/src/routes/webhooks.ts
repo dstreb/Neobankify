@@ -143,9 +143,9 @@ async function handleItemWebhook(
           error_message: (error?.error_message as string) || 'Unknown error',
           updated_at: new Date(),
         });
-      // Mark linked accounts as error state
+      // Mark only this item's linked accounts as error state
       await db('linked_accounts')
-        .where({ user_id: plaidItem.user_id, provider: 'plaid', status: 'active' })
+        .where({ plaid_item_id: plaidItem.id, user_id: plaidItem.user_id, status: 'active' })
         .update({ status: 'error', error_code: 'PLAID_ITEM_ERROR', updated_at: new Date() });
       break;
     }
