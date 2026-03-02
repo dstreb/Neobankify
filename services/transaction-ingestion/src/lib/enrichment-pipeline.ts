@@ -175,6 +175,12 @@ export async function batchEnrich(params: {
 
   for (const row of transactions) {
     try {
+      // Extract Plaid categories from enrichment_data if stored during Plaid sync,
+      // so the enrichment pipeline can use them as a fallback instead of defaulting to 'other'.
+      const existingEnrichment = row.enrichment_data
+        ? (typeof row.enrichment_data === 'string' ? JSON.parse(row.enrichment_data) : row.enrichment_data)
+        : {};
+
       const txn: RawTransaction = {
         id: row.id,
         userId: row.user_id,
@@ -185,6 +191,8 @@ export async function batchEnrich(params: {
         mccCode: row.mcc_code,
         transactionDate: row.transaction_date,
         status: row.status,
+        plaidCategory: existingEnrichment.plaidCategory || row.category || null,
+        plaidDetailedCategory: existingEnrichment.plaidDetailedCategory || row.subcategory || null,
       };
 
       await enrichAndPersist(txn);

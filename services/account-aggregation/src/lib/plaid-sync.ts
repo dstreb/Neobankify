@@ -159,6 +159,16 @@ export async function syncItemTransactions(params: {
       continue;
     }
 
+    // Preserve raw Plaid categories in enrichment_data so the enrichment pipeline
+    // can use them as a fallback without re-fetching from Plaid.
+    const plaidEnrichmentData = (txn.personalFinanceCategory?.primary || txn.category[0])
+      ? JSON.stringify({
+          plaidCategory: txn.personalFinanceCategory?.primary || txn.category[0] || null,
+          plaidDetailedCategory: txn.personalFinanceCategory?.detailed || txn.category[1] || null,
+          source: 'plaid_sync',
+        })
+      : null;
+
     await db('transactions')
       .insert({
         id: uuidv4(),
@@ -175,6 +185,7 @@ export async function syncItemTransactions(params: {
         subcategory: txn.personalFinanceCategory?.detailed || txn.category[1] || null,
         transaction_date: txn.date,
         status: txn.pending ? 'pending' : 'posted',
+        enrichment_data: plaidEnrichmentData,
         created_at: new Date(),
         updated_at: new Date(),
       })
