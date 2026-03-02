@@ -182,16 +182,24 @@ paperTradingRouter.post('/accounts/reset', async (req: Request, res: Response): 
         updated_at: new Date(),
       });
 
-    // Close all paper positions
-    await db('trading_positions')
-      .where({ account_id: account.id, tenant_id: tenantId, status: 'open' })
-      .update({ status: 'closed', closed_at: new Date() });
+    // Close all paper positions for this user
+    // trading_positions.account_id references trading_accounts(id), not paper_trading_accounts(id)
+    // So query by user_id + tenant_id and join through trading_accounts where is_paper=true
+    const paperTradingAccount = await db('trading_accounts')
+      .where({ user_id: userId, tenant_id: tenantId, is_paper: true })
+      .first();
 
-    // Cancel all pending paper orders
-    await db('trading_orders')
-      .where({ account_id: account.id, tenant_id: tenantId, is_paper_trade: true })
-      .whereIn('status', ['pending', 'submitted'])
-      .update({ status: 'cancelled', updated_at: new Date() });
+    if (paperTradingAccount) {
+      await db('trading_positions')
+        .where({ account_id: paperTradingAccount.id, tenant_id: tenantId, status: 'open' })
+        .update({ status: 'closed', closed_at: new Date() });
+
+      // Cancel all pending paper orders
+      await db('trading_orders')
+        .where({ account_id: paperTradingAccount.id, tenant_id: tenantId, is_paper_trade: true })
+        .whereIn('status', ['pending', 'submitted'])
+        .update({ status: 'cancelled', updated_at: new Date() });
+    }
 
     logger.info('Paper account reset', { userId, tenantId, accountId: account.id });
 

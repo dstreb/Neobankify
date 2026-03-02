@@ -38,7 +38,12 @@ suitabilityRouter.post('/assess', async (req: Request, res: Response): Promise<v
     const input: SuitabilityInput = parsed.data;
     const result = assessSuitability(input);
 
-    // Store the suitability assessment
+    // Deactivate any existing active profile (partial unique index enforces one active per user+tenant)
+    await db('investment_profiles')
+      .where({ user_id: userId, tenant_id: tenantId, status: 'active' })
+      .update({ status: 'expired', updated_at: new Date() });
+
+    // Store the new suitability assessment
     const assessmentId = uuidv4();
     await db('investment_profiles').insert({
       id: assessmentId,
