@@ -158,8 +158,11 @@ adminRouter.patch('/tenants/:id', async (req: Request, res: Response): Promise<v
 
     await db('tenants').where({ id: tenantId }).update(updates);
 
-    // Invalidate cache
-    await redis.del(tenantId);
+    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    await Promise.all([
+      redis.del(tenantId),
+      redis.call('DEL', `gw-tenant:${tenantId}`),
+    ]);
 
     res.json({ success: true, data: { message: 'Tenant updated.' } });
   } catch (error) {
@@ -218,8 +221,11 @@ adminRouter.patch('/tenants/:id/features', async (req: Request, res: Response): 
       updated_at: new Date(),
     });
 
-    // Invalidate cache
-    await redis.del(tenantId);
+    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    await Promise.all([
+      redis.del(tenantId),
+      redis.call('DEL', `gw-tenant:${tenantId}`),
+    ]);
 
     logger.info('Feature flags updated', { tenantId, flags: mergedFlags });
 
@@ -245,7 +251,11 @@ adminRouter.post('/tenants/:id/theme', async (req: Request, res: Response): Prom
       updated_at: new Date(),
     });
 
-    await redis.del(tenantId);
+    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    await Promise.all([
+      redis.del(tenantId),
+      redis.call('DEL', `gw-tenant:${tenantId}`),
+    ]);
 
     res.json({ success: true, data: { message: 'Theme updated.' } });
   } catch (error) {
