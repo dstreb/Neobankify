@@ -173,7 +173,7 @@ export async function syncItemTransactions(params: {
         created_at: new Date(),
         updated_at: new Date(),
       })
-      .onConflict('provider_transaction_id')
+      .onConflict(db.raw('(provider_transaction_id) WHERE provider_transaction_id IS NOT NULL'))
       .ignore(); // Skip duplicates
   }
 
