@@ -162,9 +162,11 @@ export function calculateRewards(
   const wasOptimal = !txn.cardUsed || txn.cardUsed === optimalCard.cardId;
 
   // Generate recommendation if value delta is significant
+  // When only one card passes utilization filter, there's no alternative to compare against
+  // so valueDelta is 0 (no card-routing recommendation needed)
   const valueDelta = alternatives.length > 0
     ? optimalCard.effectiveValue - alternatives[0].effectiveValue
-    : optimalCard.effectiveValue;
+    : 0;
 
   const recommendation = valueDelta >= MIN_VALUE_DELTA
     ? generateRecommendation(txn, optimalCard, alternatives, valueDelta)

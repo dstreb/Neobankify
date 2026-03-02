@@ -26,6 +26,7 @@ recommendationsRouter.get('/', async (req: Request, res: Response): Promise<void
         reasoning: r.reasoning,
         confidenceScore: r.confidence_score,
         guardrailsTriggered: r.guardrails_triggered,
+        outcome: r.outcome,
         createdAt: r.created_at,
       })),
     });
