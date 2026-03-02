@@ -202,7 +202,7 @@ paymentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
 
     if (loanId) query = query.where({ loan_id: loanId });
 
-    const payments = await query.orderBy('created_at', 'desc').limit(100);
+    const payments = await query.orderBy('loan_payments.created_at', 'desc').limit(100);
 
     res.json({
       success: true,
