@@ -29,8 +29,8 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  // Skip auth for public paths (exact match only to prevent prefix-based bypass)
-  if (PUBLIC_PATHS.some(path => req.path === path)) {
+  // Skip auth for public paths (exact match, also accept trailing slash)
+  if (PUBLIC_PATHS.some(path => req.path === path || req.path === path + '/')) {
     next();
     return;
   }

@@ -88,8 +88,8 @@ export async function handleLinkCompletion(params: {
       account_type: accountType,
       institution_name: params.institutionName,
       mask: acct.mask,
-      current_balance: acct.currentBalance || 0,
-      available_balance: acct.availableBalance || 0,
+      current_balance: acct.currentBalance ?? 0,
+      available_balance: acct.availableBalance ?? 0,
       credit_limit: acct.limit,
       currency: acct.isoCurrencyCode || 'USD',
       last_synced_at: new Date(),
@@ -249,8 +249,8 @@ export async function refreshBalances(params: {
     const result = await db('linked_accounts')
       .where({ provider_account_id: acct.accountId, user_id: item.user_id, status: 'active' })
       .update({
-        current_balance: acct.currentBalance || 0,
-        available_balance: acct.availableBalance || 0,
+        current_balance: acct.currentBalance ?? 0,
+        available_balance: acct.availableBalance ?? 0,
         credit_limit: acct.limit,
         last_synced_at: new Date(),
         updated_at: new Date(),
