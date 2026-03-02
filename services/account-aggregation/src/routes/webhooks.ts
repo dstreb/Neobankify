@@ -127,8 +127,10 @@ async function handleItemWebhook(
   itemId: string,
   payload: Record<string, unknown>
 ): Promise<void> {
+  // Exclude disconnected items — same pattern as handleTransactionWebhook
   const plaidItem = await db('plaid_items')
     .where({ plaid_item_id: itemId })
+    .whereNot({ status: 'disconnected' })
     .first();
 
   if (!plaidItem) {

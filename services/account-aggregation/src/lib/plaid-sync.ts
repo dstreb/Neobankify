@@ -127,9 +127,11 @@ export async function syncItemTransactions(params: {
   const config = { ...DEFAULT_TENANT_CONFIG, ...params.tenantConfig };
   const client = createPlaidClient(config);
 
-  // Get item from DB
+  // Get item from DB — allow any status except 'disconnected' so that
+  // webhook-triggered syncs can recover items in 'error' or 'login_required' state.
   const item = await db('plaid_items')
-    .where({ id: params.plaidItemDbId, tenant_id: params.tenantId, status: 'active' })
+    .where({ id: params.plaidItemDbId, tenant_id: params.tenantId })
+    .whereNot({ status: 'disconnected' })
     .first();
 
   if (!item) {
