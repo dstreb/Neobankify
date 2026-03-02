@@ -165,22 +165,18 @@ accountsRouter.post('/:id/refresh', async (req: Request, res: Response): Promise
       return;
     }
 
-    const plaidItem = await db('plaid_items')
-      .where({ user_id: userId, tenant_id: tenantId, status: 'active' })
-      .first();
-
-    if (!plaidItem) {
+    if (!account.plaid_item_id) {
       res.status(404).json({
         type: 'https://api.neobank.io/errors/not-found',
         title: 'Plaid Item Not Found',
         status: 404,
-        detail: 'No active Plaid connection found.',
+        detail: 'No active Plaid connection found for this account.',
       });
       return;
     }
 
     const updated = await refreshBalances({
-      plaidItemDbId: plaidItem.id,
+      plaidItemDbId: account.plaid_item_id,
       tenantId,
       tenantConfig: DEFAULT_TENANT_CONFIG,
     });
@@ -206,20 +202,30 @@ accountsRouter.delete('/:id', async (req: Request, res: Response): Promise<void>
     const userId = req.headers['x-user-id'] as string;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Find the Plaid item associated with this account
-    const plaidItem = await db('plaid_items')
-      .where({ user_id: userId, tenant_id: tenantId, status: 'active' })
+    // Find the specific account being deleted
+    const account = await db('linked_accounts')
+      .where({ id: req.params.id, user_id: userId, status: 'active' })
       .first();
 
-    if (plaidItem) {
+    if (!account) {
+      res.status(404).json({
+        type: 'https://api.neobank.io/errors/not-found',
+        title: 'Account Not Found',
+        status: 404,
+        detail: 'Account not found.',
+      });
+      return;
+    }
+
+    if (account.plaid_item_id) {
       await disconnectItem({
-        plaidItemDbId: plaidItem.id,
+        plaidItemDbId: account.plaid_item_id,
         userId,
         tenantId,
         tenantConfig: DEFAULT_TENANT_CONFIG,
       });
     } else {
-      // Fallback: just mark the account as disconnected
+      // Non-Plaid account or legacy account without plaid_item_id
       await db('linked_accounts')
         .where({ id: req.params.id, user_id: userId })
         .update({ status: 'disconnected', updated_at: new Date() });

@@ -81,6 +81,7 @@ export async function handleLinkCompletion(params: {
     await db('linked_accounts').insert({
       id: accountId,
       user_id: params.userId,
+      plaid_item_id: plaidItemId,
       provider: 'plaid',
       provider_account_id: acct.accountId,
       access_token_encrypted: encryptAccessToken(accessToken),
@@ -292,15 +293,9 @@ export async function disconnectItem(params: {
     .where({ id: params.plaidItemDbId })
     .update({ status: 'disconnected', updated_at: new Date() });
 
-  // Mark all linked accounts as disconnected
+  // Mark all linked accounts belonging to this Plaid item as disconnected
   await db('linked_accounts')
-    .where({ user_id: params.userId, provider: 'plaid', status: 'active' })
-    .whereIn('provider_account_id', function () {
-      // Only disconnect accounts that belong to this item
-      this.select('provider_account_id')
-        .from('linked_accounts')
-        .where('access_token_encrypted', item.access_token_encrypted);
-    })
+    .where({ plaid_item_id: params.plaidItemDbId, user_id: params.userId, status: 'active' })
     .update({ status: 'disconnected', updated_at: new Date() });
 
   logger.info('Plaid item disconnected', { itemId: params.plaidItemDbId, userId: params.userId });
