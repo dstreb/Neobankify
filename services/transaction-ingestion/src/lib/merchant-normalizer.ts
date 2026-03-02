@@ -56,7 +56,7 @@ const MERCHANT_ALIASES: Array<{ pattern: RegExp; canonical: string; category?: s
   // Gas stations
   { pattern: /\bSHELL\b/i, canonical: 'SHELL', category: 'gas' },
   { pattern: /\bCHEVRON\b/i, canonical: 'CHEVRON', category: 'gas' },
-  { pattern: /\bEXXON\b/i, canonical: 'EXXON', category: 'gas' },
+  { pattern: /\bEXXON(?:MOBIL)?\b/i, canonical: 'EXXON', category: 'gas' },
   { pattern: /\bMOBIL\b/i, canonical: 'MOBIL', category: 'gas' },
   { pattern: /\bBP\b/, canonical: 'BP', category: 'gas' },
   { pattern: /\bSPEEDWAY\b/i, canonical: 'SPEEDWAY', category: 'gas' },

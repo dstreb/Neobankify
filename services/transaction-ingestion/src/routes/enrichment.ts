@@ -69,13 +69,15 @@ enrichmentRouter.post('/process', async (req: Request, res: Response): Promise<v
 
 // --- POST /enrichment/batch ---
 // Internal: batch enrich unenriched transactions for a tenant
+// Uses x-tenant-id header (not body) to enforce tenant isolation
 const batchSchema = z.object({
-  tenantId: z.string().uuid(),
   limit: z.number().int().min(1).max(5000).optional().default(500),
 });
 
 enrichmentRouter.post('/batch', async (req: Request, res: Response): Promise<void> => {
   try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+
     const parsed = batchSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({
@@ -87,7 +89,7 @@ enrichmentRouter.post('/batch', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { tenantId, limit } = parsed.data;
+    const { limit } = parsed.data;
     const result = await batchEnrich({ tenantId, limit });
 
     res.json({
