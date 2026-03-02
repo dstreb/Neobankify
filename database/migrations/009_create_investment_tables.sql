@@ -176,6 +176,28 @@ CREATE INDEX idx_rebalance_tenant ON rebalance_events(tenant_id);
 CREATE INDEX idx_rebalance_status ON rebalance_events(status);
 
 -- =====================================================
+-- INVESTMENT TRANSFERS (deposits/withdrawals)
+-- =====================================================
+CREATE TABLE investment_transfers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES investment_accounts(id),
+    user_id UUID NOT NULL REFERENCES users(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    type VARCHAR(20) NOT NULL CHECK (type IN ('deposit', 'withdrawal')),
+    amount NUMERIC(15,2) NOT NULL,
+    funding_source_id UUID,
+    provider_transfer_id VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_investment_transfers_account ON investment_transfers(account_id);
+CREATE INDEX idx_investment_transfers_user ON investment_transfers(user_id);
+CREATE INDEX idx_investment_transfers_tenant ON investment_transfers(tenant_id);
+CREATE INDEX idx_investment_transfers_status ON investment_transfers(status);
+
+-- =====================================================
 -- TAX LOT TRACKING (for tax-loss harvesting)
 -- =====================================================
 CREATE TABLE tax_lots (
@@ -200,3 +222,71 @@ CREATE INDEX idx_tax_lots_account ON tax_lots(investment_account_id);
 CREATE INDEX idx_tax_lots_tenant ON tax_lots(tenant_id);
 CREATE INDEX idx_tax_lots_symbol ON tax_lots(symbol);
 CREATE INDEX idx_tax_lots_open ON tax_lots(status) WHERE status = 'open';
+
+-- =====================================================
+-- Compatibility renames / extensions to match service code
+-- =====================================================
+
+-- Suitability profiles are referenced as investment_profiles in service code
+ALTER TABLE suitability_profiles
+    ADD COLUMN risk_level VARCHAR(20) CHECK (risk_level IN ('conservative', 'moderate_conservative', 'moderate', 'moderate_aggressive', 'aggressive')),
+    ADD COLUMN recommended_strategy VARCHAR(30),
+    ADD COLUMN recommended_allocation JSONB DEFAULT '{}',
+    ADD COLUMN suitability_explanation TEXT,
+    ADD COLUMN suitability_warnings JSONB NOT NULL DEFAULT '[]',
+    ADD COLUMN assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE suitability_profiles RENAME TO investment_profiles;
+
+-- Investment accounts include external_account_id in service code
+ALTER TABLE investment_accounts ADD COLUMN external_account_id VARCHAR(255);
+
+-- Portfolios are referenced as investment_portfolios in service code
+ALTER TABLE portfolios
+    ADD COLUMN user_id UUID REFERENCES users(id),
+    ADD COLUMN profile_id UUID REFERENCES investment_profiles(id),
+    ADD COLUMN total_invested NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN total_returns NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN total_returns_pct NUMERIC(8,4) NOT NULL DEFAULT 0.0000,
+    ADD COLUMN auto_rebalance BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN dividend_reinvestment BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN last_rebalanced_at TIMESTAMPTZ;
+
+ALTER TABLE portfolios ALTER COLUMN portfolio_type SET DEFAULT 'user_custom';
+ALTER TABLE portfolios ALTER COLUMN risk_level SET DEFAULT 'moderate';
+
+ALTER TABLE portfolios RENAME COLUMN tax_loss_harvesting_enabled TO tax_loss_harvesting;
+
+ALTER TABLE portfolios DROP CONSTRAINT portfolios_status_check;
+ALTER TABLE portfolios ADD CONSTRAINT portfolios_status_check CHECK (status IN ('pending_funding', 'active', 'paused', 'closed', 'draft'));
+
+ALTER TABLE portfolios RENAME TO investment_portfolios;
+
+-- Holdings are referenced as portfolio_holdings in service code
+ALTER TABLE holdings RENAME COLUMN symbol TO ticker;
+ALTER TABLE holdings RENAME COLUMN asset_type TO asset_class;
+ALTER TABLE holdings RENAME COLUMN quantity TO shares;
+ALTER TABLE holdings RENAME COLUMN avg_cost_basis TO cost_basis;
+ALTER TABLE holdings RENAME COLUMN market_value TO current_value;
+ALTER TABLE holdings ADD COLUMN name VARCHAR(255);
+ALTER TABLE holdings ALTER COLUMN investment_account_id DROP NOT NULL;
+
+ALTER TABLE holdings RENAME TO portfolio_holdings;
+
+-- Allow flexible asset_class values from portfolio construction logic
+ALTER TABLE portfolio_holdings DROP CONSTRAINT holdings_asset_type_check;
+
+-- Investment orders align with service code naming
+ALTER TABLE investment_orders ALTER COLUMN investment_account_id DROP NOT NULL;
+ALTER TABLE investment_orders RENAME COLUMN symbol TO ticker;
+ALTER TABLE investment_orders RENAME COLUMN amount TO amount_usd;
+ALTER TABLE investment_orders RENAME COLUMN filled_avg_price TO filled_price;
+ALTER TABLE investment_orders RENAME COLUMN provider_order_id TO external_order_id;
+ALTER TABLE investment_orders ADD COLUMN time_in_force VARCHAR(10) NOT NULL DEFAULT 'day' CHECK (time_in_force IN ('day', 'gtc', 'ioc'));
+
+-- Rebalance events are referenced as portfolio_rebalances in service code
+ALTER TABLE rebalance_events RENAME COLUMN drift_before TO before_allocation;
+ALTER TABLE rebalance_events RENAME COLUMN trades_proposed TO actions;
+ALTER TABLE rebalance_events ADD COLUMN target_allocation JSONB DEFAULT '{}';
+
+ALTER TABLE rebalance_events RENAME TO portfolio_rebalances;

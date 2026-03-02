@@ -32,7 +32,8 @@ complianceRouter.get('/adverse-action/:applicationId', async (req: Request, res:
     }
 
     const adverseReasons = application.adverse_action_reasons || [];
-    const factors = application.underwriting_factors || [];
+    const underwritingDecision = (application.underwriting_decision || {}) as Record<string, unknown>;
+    const factors = (underwritingDecision.factors || []) as Array<{ name: string; score: number; detail: string }>;
 
     // ECOA-compliant adverse action notice
     res.json({
@@ -44,12 +45,11 @@ complianceRouter.get('/adverse-action/:applicationId', async (req: Request, res:
           applicationId: application.id,
           applicationDate: application.submitted_at,
           decisionDate: application.decision_at,
-          loanType: application.loan_type,
           requestedAmount: application.requested_amount,
 
           // Decision details
           decision: 'DENIED',
-          decisionScore: application.decision_score,
+          decisionScore: underwritingDecision.decisionScore ?? null,
 
           // ECOA-required adverse action reasons (top 4)
           reasons: adverseReasons.slice(0, 4).map((r: { code: string; description: string }) => ({
@@ -59,7 +59,7 @@ complianceRouter.get('/adverse-action/:applicationId', async (req: Request, res:
 
           // Credit score disclosure (FCRA Section 609(g))
           creditScoreDisclosure: {
-            score: application.credit_score,
+            score: application.credit_score_at_application,
             scoreRange: { min: 300, max: 850 },
             scoreName: 'FICO Score 8',
             keyFactors: factors.filter((f: { score: number }) => f.score < 60).slice(0, 4).map((f: { name: string; detail: string }) => f.detail),
@@ -160,12 +160,12 @@ complianceRouter.get('/fair-lending-report', async (req: Request, res: Response)
       .where({ tenant_id: tenantId })
       .whereIn('status', ['approved', 'originated'])
       .whereBetween('submitted_at', [startDate, endDate])
-      .whereNotNull('approved_rate')
-      .select('risk_grade')
-      .avg('approved_rate as avg_rate')
+      .whereNotNull('approved_apr')
+      .select('risk_tier_at_application as risk_grade')
+      .avg('approved_apr as avg_rate')
       .count('id as count')
-      .groupBy('risk_grade')
-      .orderBy('risk_grade');
+      .groupBy('risk_tier_at_application')
+      .orderBy('risk_tier_at_application');
 
     const total = Number(totalApplications?.count || 0);
     const approved = Number(approvedCount?.count || 0);
@@ -251,11 +251,11 @@ complianceRouter.get('/decision-audit/:applicationId', async (req: Request, res:
         status: application.status,
         submittedAt: application.submitted_at,
         decisionAt: application.decision_at,
-        underwritingFactors: application.underwriting_factors,
-        decisionScore: application.decision_score,
-        riskGrade: application.risk_grade,
+        underwritingDecision: application.underwriting_decision,
+        decisionScore: ((application.underwriting_decision || {}) as Record<string, unknown>).decisionScore ?? null,
+        riskGrade: application.risk_tier_at_application,
         adverseActionReasons: application.adverse_action_reasons,
-        explanation: application.decision_explanation,
+        explanation: ((application.underwriting_decision || {}) as Record<string, unknown>).explanation ?? null,
         auditTrail: auditEntries.map((e: Record<string, unknown>) => ({
           action: e.action,
           beforeState: e.before_state,

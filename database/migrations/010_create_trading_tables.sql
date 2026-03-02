@@ -215,3 +215,61 @@ CREATE TABLE backtest_results (
 
 CREATE INDEX idx_backtest_strategy ON backtest_results(strategy_id);
 CREATE INDEX idx_backtest_tenant ON backtest_results(tenant_id);
+
+-- =====================================================
+-- Compatibility renames / extensions to match service code
+-- =====================================================
+
+-- Add fields used by trading-service routes
+ALTER TABLE trading_accounts
+    ADD COLUMN risk_level VARCHAR(20) CHECK (risk_level IN ('conservative', 'moderate', 'aggressive')),
+    ADD COLUMN peak_value NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN total_pnl NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN day_pnl NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN external_account_id VARCHAR(255);
+
+ALTER TABLE trading_accounts DROP CONSTRAINT trading_accounts_account_type_check;
+ALTER TABLE trading_accounts ADD CONSTRAINT trading_accounts_account_type_check CHECK (account_type IN ('cash', 'individual', 'margin'));
+
+-- Service code references trading_orders and uses account_id / ticker naming
+ALTER TABLE trade_orders RENAME TO trading_orders;
+ALTER TABLE trading_orders RENAME COLUMN trading_account_id TO account_id;
+ALTER TABLE trading_orders RENAME COLUMN symbol TO ticker;
+ALTER TABLE trading_orders RENAME COLUMN trail_pct TO trailing_pct;
+ALTER TABLE trading_orders RENAME COLUMN is_paper TO is_paper_trade;
+ALTER TABLE trading_orders RENAME COLUMN provider_order_id TO external_order_id;
+
+ALTER TABLE trading_orders DROP CONSTRAINT trade_orders_side_check;
+ALTER TABLE trading_orders ADD CONSTRAINT trading_orders_side_check CHECK (side IN ('buy', 'sell', 'short', 'cover'));
+
+-- Service code uses trading_positions.account_id and ticker naming
+ALTER TABLE trading_positions RENAME COLUMN trading_account_id TO account_id;
+ALTER TABLE trading_positions RENAME COLUMN symbol TO ticker;
+ALTER TABLE trading_positions RENAME COLUMN market_value TO current_value;
+ALTER TABLE trading_positions
+    ADD COLUMN day_pnl NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+    ADD COLUMN day_pnl_pct NUMERIC(8,4) NOT NULL DEFAULT 0.0000,
+    ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+    ADD COLUMN closed_at TIMESTAMPTZ;
+
+-- Paper trading accounts table (used by paper-trading routes)
+CREATE TABLE paper_trading_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed')),
+    initial_balance NUMERIC(15,2) NOT NULL,
+    cash_balance NUMERIC(15,2) NOT NULL,
+    portfolio_value NUMERIC(15,2) NOT NULL,
+    peak_value NUMERIC(15,2) NOT NULL,
+    total_pnl NUMERIC(15,2) NOT NULL DEFAULT 0,
+    total_trades INTEGER NOT NULL DEFAULT 0,
+    winning_trades INTEGER NOT NULL DEFAULT 0,
+    losing_trades INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_paper_trading_accounts_user ON paper_trading_accounts(user_id);
+CREATE INDEX idx_paper_trading_accounts_tenant ON paper_trading_accounts(tenant_id);
+CREATE INDEX idx_paper_trading_accounts_status ON paper_trading_accounts(status);

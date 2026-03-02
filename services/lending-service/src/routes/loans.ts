@@ -251,7 +251,7 @@ loansRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
         amortizationSchedule: schedule.map((s: Record<string, unknown>) => ({
           paymentNumber: s.payment_number,
           dueDate: s.due_date,
-          payment: s.payment_amount,
+          payment: s.total_amount,
           principal: s.principal_amount,
           interest: s.interest_amount,
           balance: s.remaining_balance,

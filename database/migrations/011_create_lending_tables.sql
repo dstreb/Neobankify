@@ -233,3 +233,20 @@ CREATE INDEX idx_fair_lending_app ON fair_lending_audit(loan_application_id);
 CREATE INDEX idx_fair_lending_tenant ON fair_lending_audit(tenant_id);
 CREATE INDEX idx_fair_lending_type ON fair_lending_audit(analysis_type);
 CREATE INDEX idx_fair_lending_fails ON fair_lending_audit(passes_threshold) WHERE passes_threshold = false;
+
+-- =====================================================
+-- Compatibility extensions to match service code
+-- =====================================================
+
+-- loan_applications: add collateral_value used by loan application form
+ALTER TABLE loan_applications ADD COLUMN collateral_value NUMERIC(15,2);
+
+-- loan_applications: add loan_type for adverse action notice (populated from loan_products.product_type)
+ALTER TABLE loan_applications ADD COLUMN loan_type VARCHAR(30);
+
+-- loans: status check needs 'current' which is already in the constraint, OK
+
+-- loan_applications status: add 'originated' and 'funded' 
+ALTER TABLE loan_applications DROP CONSTRAINT loan_applications_status_check;
+ALTER TABLE loan_applications ADD CONSTRAINT loan_applications_status_check
+  CHECK (status IN ('draft', 'submitted', 'under_review', 'approved', 'conditionally_approved', 'denied', 'withdrawn', 'expired', 'funded', 'originated'));
