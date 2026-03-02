@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import db from '../config/database';
 import redis from '../config/redis';
+import { rawRedis } from '../config/redis';
 import { logger } from '../config/logger';
 
 export const adminRouter = Router();
@@ -158,10 +159,11 @@ adminRouter.patch('/tenants/:id', async (req: Request, res: Response): Promise<v
 
     await db('tenants').where({ id: tenantId }).update(updates);
 
-    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
     await Promise.all([
       redis.del(tenantId),
-      redis.call('DEL', `gw-tenant:${tenantId}`),
+      rawRedis.del(`gw-tenant:${tenantId}`),
     ]);
 
     res.json({ success: true, data: { message: 'Tenant updated.' } });
@@ -221,10 +223,11 @@ adminRouter.patch('/tenants/:id/features', async (req: Request, res: Response): 
       updated_at: new Date(),
     });
 
-    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
     await Promise.all([
       redis.del(tenantId),
-      redis.call('DEL', `gw-tenant:${tenantId}`),
+      rawRedis.del(`gw-tenant:${tenantId}`),
     ]);
 
     logger.info('Feature flags updated', { tenantId, flags: mergedFlags });
@@ -251,10 +254,11 @@ adminRouter.post('/tenants/:id/theme', async (req: Request, res: Response): Prom
       updated_at: new Date(),
     });
 
-    // Invalidate both tenant-service cache (tenant:<uuid>) and gateway cache (gw-tenant:<uuid>)
+    // Invalidate tenant-service cache (tenant:<uuid>) via prefixed client,
+    // and gateway cache (gw-tenant:<uuid>) via raw client (no keyPrefix).
     await Promise.all([
       redis.del(tenantId),
-      redis.call('DEL', `gw-tenant:${tenantId}`),
+      rawRedis.del(`gw-tenant:${tenantId}`),
     ]);
 
     res.json({ success: true, data: { message: 'Theme updated.' } });

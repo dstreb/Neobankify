@@ -25,8 +25,9 @@ export const tenantResolver = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Skip tenant resolution for health checks and external webhooks
-    if (req.path.startsWith('/health') || req.path === '/v1/auth/kyc/webhook' || req.path.startsWith('/v1/webhooks/')) {
+    // Skip tenant resolution for health checks and external webhooks.
+    // Use exact matches to stay consistent with auth middleware's PUBLIC_PATHS.
+    if (req.path === '/health' || req.path === '/v1/auth/kyc/webhook' || req.path === '/v1/webhooks/plaid') {
       next();
       return;
     }
