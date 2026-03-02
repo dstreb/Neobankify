@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import db from '../config/database';
 import { logger } from '../config/logger';
+import { trackTransactionReward } from '../lib/reward-tracker';
 
 export const rewardsRouter = Router();
 
@@ -165,6 +165,79 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
       title: 'Internal Error',
       status: 500,
       detail: 'Failed to fetch rewards history.',
+    });
+  }
+});
+
+// --- POST /rewards/track ---
+// Track reward earnings for a specific enriched transaction
+const trackSchema = z.object({
+  transactionId: z.string().uuid(),
+  amount: z.number().positive(),
+  category: z.string().min(1),
+  subcategory: z.string().min(1),
+  merchantNormalized: z.string().min(1),
+  merchantCanonical: z.string().nullable().optional(),
+  cardUsed: z.string().uuid().nullable().optional(),
+  redemptionPreference: z.enum(['cashback', 'travel', 'transfer', 'gift_cards']).optional(),
+});
+
+rewardsRouter.post('/track', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    const parsed = trackSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        type: 'https://api.neobank.io/errors/validation',
+        title: 'Validation Error',
+        status: 400,
+        detail: parsed.error.errors.map(e => `${e.path}: ${e.message}`).join(', '),
+      });
+      return;
+    }
+
+    const result = await trackTransactionReward({
+      transactionId: parsed.data.transactionId,
+      userId,
+      tenantId,
+      amount: parsed.data.amount,
+      category: parsed.data.category,
+      subcategory: parsed.data.subcategory,
+      merchantNormalized: parsed.data.merchantNormalized,
+      merchantCanonical: parsed.data.merchantCanonical ?? null,
+      cardUsed: parsed.data.cardUsed ?? null,
+      redemptionPreference: parsed.data.redemptionPreference,
+    });
+
+    if (!result) {
+      res.json({
+        success: true,
+        data: { tracked: false, reason: 'No cards in portfolio' },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        tracked: true,
+        rewardEarnedId: result.rewardEarnedId,
+        pointsEarned: result.pointsEarned,
+        cashbackEarned: result.cashbackEarned,
+        wasOptimal: result.wasOptimal,
+        missedValue: result.missedValue,
+        hasRecommendation: result.agentDecisionId !== null,
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to track reward', { error: (error as Error).message });
+    res.status(500).json({
+      type: 'https://api.neobank.io/errors/internal',
+      title: 'Internal Error',
+      status: 500,
+      detail: 'Failed to track reward.',
     });
   }
 });
