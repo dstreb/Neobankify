@@ -14,7 +14,7 @@ const DEFAULT_TENANT_CONFIG: PlaidTenantConfig = {
   clientId: process.env.PLAID_CLIENT_ID || '',
   secret: process.env.PLAID_SECRET || '',
   environment: (process.env.PLAID_ENV as PlaidTenantConfig['environment']) || 'sandbox',
-  webhookUrl: process.env.PLAID_WEBHOOK_URL || 'https://api.neobank.io/webhooks/plaid',
+  webhookUrl: process.env.PLAID_WEBHOOK_URL || 'https://api.neobank.io/v1/webhooks/plaid',
   products: ['transactions', 'auth'],
   countryCodes: ['US'],
 };
