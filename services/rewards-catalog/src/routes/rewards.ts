@@ -153,7 +153,7 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
         rewardProgramId: r.reward_program_id,
         pointsEarned: r.points_earned,
         cashbackEarned: r.cashback_earned,
-        category: r.category,
+        earnRate: r.earn_rate,
         wasOptimal: r.was_optimal,
         missedValue: r.missed_value,
         createdAt: r.created_at,

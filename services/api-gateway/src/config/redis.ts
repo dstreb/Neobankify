@@ -1,15 +1,16 @@
 import Redis from 'ioredis';
 import { logger } from './logger';
 
-// Gateway Redis client — uses keyPrefix 'tenant:' to match the tenant-service
-// Redis namespace, so that when admin routes invalidate a tenant via
-// redis.del(tenantId) (which sends DEL tenant:<uuid>), the gateway's cached
-// entry is also invalidated.
+// Gateway Redis client — uses keyPrefix 'gw-tenant:' to avoid colliding with
+// the tenant-service Redis namespace ('tenant:').  The tenant-service caches
+// full JSON config objects at 'tenant:<uuid>', while the gateway only needs
+// to cache the tenant slug string for validation.  Separate prefixes prevent
+// cross-service cache corruption.
 const redis = new Redis({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   password: process.env.REDIS_PASSWORD || undefined,
-  keyPrefix: 'tenant:',
+  keyPrefix: 'gw-tenant:',
   maxRetriesPerRequest: 1,
   lazyConnect: true,
 });

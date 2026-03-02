@@ -59,9 +59,9 @@ export const tenantResolver = async (
     // Uses Redis cache with DB fallback for performance
     const redis = req.app.locals.redis;
     let tenantSlug = '';
-    // Use raw tenantId as cache key — the gateway Redis client has keyPrefix:'tenant:'
-    // (matching the tenant-service), so redis.get(tenantId) actually reads 'tenant:<uuid>'.
-    // This ensures admin invalidation (redis.del(tenantId)) clears the gateway cache too.
+    // Use raw tenantId as cache key — the gateway Redis client has keyPrefix:'gw-tenant:'
+    // (separate from the tenant-service's 'tenant:' prefix) to avoid cache format collisions.
+    // The gateway caches plain slug strings; the tenant-service caches full JSON config objects.
     const cacheKey = tenantId;
 
     if (redis) {
@@ -101,6 +101,17 @@ export const tenantResolver = async (
           redis.set(cacheKey, tenantSlug, 'EX', 300).catch(() => {});
         }
       }
+    }
+
+    // If neither Redis nor DB could validate the tenant, reject the request
+    if (!tenantSlug) {
+      res.status(503).json({
+        type: 'https://api.neobank.io/errors/service-unavailable',
+        title: 'Service Unavailable',
+        status: 503,
+        detail: 'Unable to validate tenant. Please try again later.',
+      });
+      return;
     }
 
     req.tenant = {
