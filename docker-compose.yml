@@ -1,0 +1,335 @@
+version: '3.8'
+
+# Neobank Platform - Local Development Environment
+# Usage: docker-compose up -d
+
+services:
+  # =====================================================
+  # INFRASTRUCTURE
+  # =====================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: neobank-postgres
+    environment:
+      POSTGRES_DB: neobank
+      POSTGRES_USER: neobank
+      POSTGRES_PASSWORD: neobank_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neobank"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: neobank-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: neobank-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: neobank-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: neobank-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command: |
+      "
+      echo 'Creating Kafka topics...'
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic transactions.raw --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic transactions.enriched --partitions 6 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic agent.decisions --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic agent.recommendations --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic rewards.updates --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic rewards.earned --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic idle-cash.events --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user.profile.changes --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user.account.events --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic compliance.events --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic audit.immutable --partitions 6 --replication-factor 1 --config retention.ms=-1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notifications.send --partitions 3 --replication-factor 1
+      echo 'All topics created.'
+      "
+
+  # =====================================================
+  # BACKEND SERVICES
+  # =====================================================
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: development
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      AUTH_SERVICE_URL: http://auth-service:3001
+      TENANT_SERVICE_URL: http://tenant-service:3002
+      ACCOUNT_SERVICE_URL: http://account-aggregation:3003
+      TRANSACTION_SERVICE_URL: http://transaction-ingestion:3004
+      REWARDS_SERVICE_URL: http://rewards-catalog:3005
+      CARD_SERVICE_URL: http://card-management:3006
+      IDLE_CASH_SERVICE_URL: http://idle-cash-service:3007
+      AUDIT_SERVICE_URL: http://audit-service:3008
+      COMPLIANCE_SERVICE_URL: http://compliance-service:3009
+      NOTIFICATION_SERVICE_URL: http://notification-service:3010
+    depends_on:
+      - redis
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  tenant-service:
+    build:
+      context: ./services/tenant-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-tenant-service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  account-aggregation:
+    build:
+      context: ./services/account-aggregation
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-account-aggregation
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+      KAFKA_BROKERS: kafka:29092
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID:-sandbox}
+      PLAID_SECRET: ${PLAID_SECRET:-sandbox}
+      PLAID_ENV: sandbox
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  transaction-ingestion:
+    build:
+      context: ./services/transaction-ingestion
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-transaction-ingestion
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  rewards-catalog:
+    build:
+      context: ./services/rewards-catalog
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-rewards-catalog
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  card-management:
+    build:
+      context: ./services/card-management
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-card-management
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  idle-cash-service:
+    build:
+      context: ./services/idle-cash-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-idle-cash-service
+    ports:
+      - "3007:3007"
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  audit-service:
+    build:
+      context: ./services/audit-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-audit-service
+    ports:
+      - "3008:3008"
+    environment:
+      PORT: 3008
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  compliance-service:
+    build:
+      context: ./services/compliance-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-compliance-service
+    ports:
+      - "3009:3009"
+    environment:
+      PORT: 3009
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: neobank
+      DB_USER: neobank
+      DB_PASSWORD: neobank_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: ../../docker/Dockerfile.node
+    container_name: neobank-notification-service
+    ports:
+      - "3010:3010"
+    environment:
+      PORT: 3010
+      NODE_ENV: development
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
