@@ -7,15 +7,16 @@ import { logger } from '../config/logger';
 export const loansRouter = Router();
 
 const loanApplicationSchema = z.object({
-  loanType: z.enum(['personal', 'auto', 'home_improvement', 'debt_consolidation', 'small_business', 'credit_builder']),
+  loanProductId: z.string().uuid(),
   requestedAmount: z.number().min(500).max(500000),
   requestedTermMonths: z.enum(['12', '24', '36', '48', '60', '72', '84']).transform(Number),
-  loanPurpose: z.string().min(1).max(500),
+  purpose: z.string().min(1).max(500),
   annualIncome: z.number().positive(),
-  monthlyDebtPayments: z.number().min(0),
   employmentStatus: z.enum(['employed', 'self_employed', 'retired', 'unemployed', 'student']),
-  employmentLengthMonths: z.number().min(0),
-  creditScoreConsent: z.boolean().refine(v => v === true, { message: 'Credit score consent is required' }),
+  employerName: z.string().max(255).optional(),
+  yearsEmployed: z.number().min(0),
+  housingStatus: z.enum(['own', 'rent', 'mortgage', 'other']),
+  housingPayment: z.number().min(0).optional(),
   collateralValue: z.number().positive().optional(),
 });
 
@@ -52,20 +53,36 @@ loansRouter.post('/apply', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Verify loan product exists for this tenant
+    const loanProduct = await db('loan_products')
+      .where({ id: parsed.data.loanProductId, tenant_id: tenantId, is_active: true })
+      .first();
+
+    if (!loanProduct) {
+      res.status(400).json({
+        type: 'https://api.neobank.io/errors/validation',
+        title: 'Invalid Loan Product',
+        status: 400,
+        detail: 'The specified loan product is not available.',
+      });
+      return;
+    }
+
     const applicationId = uuidv4();
     await db('loan_applications').insert({
       id: applicationId,
       tenant_id: tenantId,
       user_id: userId,
-      loan_type: parsed.data.loanType,
+      loan_product_id: parsed.data.loanProductId,
       requested_amount: parsed.data.requestedAmount,
       requested_term_months: parsed.data.requestedTermMonths,
-      loan_purpose: parsed.data.loanPurpose,
+      purpose: parsed.data.purpose,
       annual_income: parsed.data.annualIncome,
-      monthly_debt_payments: parsed.data.monthlyDebtPayments,
       employment_status: parsed.data.employmentStatus,
-      employment_length_months: parsed.data.employmentLengthMonths,
-      credit_score_consent: true,
+      employer_name: parsed.data.employerName || null,
+      years_employed: parsed.data.yearsEmployed,
+      housing_status: parsed.data.housingStatus,
+      housing_payment: parsed.data.housingPayment || null,
       collateral_value: parsed.data.collateralValue || null,
       status: 'submitted',
       submitted_at: new Date(),
@@ -83,7 +100,7 @@ loansRouter.post('/apply', async (req: Request, res: Response): Promise<void> =>
       resource_id: applicationId,
       before_state: null,
       after_state: {
-        loanType: parsed.data.loanType,
+        loanProductId: parsed.data.loanProductId,
         requestedAmount: parsed.data.requestedAmount,
         requestedTermMonths: parsed.data.requestedTermMonths,
       },
@@ -95,7 +112,7 @@ loansRouter.post('/apply', async (req: Request, res: Response): Promise<void> =>
       userId,
       tenantId,
       applicationId,
-      loanType: parsed.data.loanType,
+      loanProductId: parsed.data.loanProductId,
       amount: parsed.data.requestedAmount,
     });
 
@@ -104,7 +121,7 @@ loansRouter.post('/apply', async (req: Request, res: Response): Promise<void> =>
       data: {
         applicationId,
         status: 'submitted',
-        loanType: parsed.data.loanType,
+        loanProductId: parsed.data.loanProductId,
         requestedAmount: parsed.data.requestedAmount,
         requestedTermMonths: parsed.data.requestedTermMonths,
         message: 'Your application has been submitted and will be reviewed shortly.',
@@ -136,19 +153,21 @@ loansRouter.get('/', async (req: Request, res: Response): Promise<void> => {
       data: loans.map((l: Record<string, unknown>) => ({
         id: l.id,
         applicationId: l.application_id,
-        loanType: l.loan_type,
+        loanProductId: l.loan_product_id,
+        loanNumber: l.loan_number,
         principalAmount: l.principal_amount,
         currentBalance: l.current_balance,
-        interestRate: l.interest_rate,
+        apr: l.apr,
         termMonths: l.term_months,
         monthlyPayment: l.monthly_payment,
         status: l.status,
         nextPaymentDate: l.next_payment_date,
         nextPaymentAmount: l.next_payment_amount,
-        totalPaid: l.total_paid,
         totalInterestPaid: l.total_interest_paid,
-        riskGrade: l.risk_grade,
-        originatedAt: l.originated_at,
+        totalPrincipalPaid: l.total_principal_paid,
+        paymentsMade: l.payments_made,
+        paymentsRemaining: l.payments_remaining,
+        fundedAt: l.funded_at,
         maturityDate: l.maturity_date,
       })),
     });
@@ -189,9 +208,9 @@ loansRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
       .orderBy('due_date', 'desc')
       .limit(24);
 
-    // Get amortization schedule
-    const schedule = await db('loan_amortization_schedule')
-      .where({ loan_id: loan.id })
+    // Get amortization schedule (scheduled payments from loan_payments)
+    const schedule = await db('loan_payments')
+      .where({ loan_id: loan.id, status: 'scheduled' })
       .orderBy('payment_number', 'asc');
 
     res.json({
@@ -199,36 +218,42 @@ loansRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
       data: {
         loan: {
           id: loan.id,
-          loanType: loan.loan_type,
+          loanProductId: loan.loan_product_id,
+          loanNumber: loan.loan_number,
           principalAmount: loan.principal_amount,
           currentBalance: loan.current_balance,
-          interestRate: loan.interest_rate,
+          apr: loan.apr,
           termMonths: loan.term_months,
           monthlyPayment: loan.monthly_payment,
           status: loan.status,
           nextPaymentDate: loan.next_payment_date,
           nextPaymentAmount: loan.next_payment_amount,
-          totalPaid: loan.total_paid,
           totalInterestPaid: loan.total_interest_paid,
-          riskGrade: loan.risk_grade,
-          originatedAt: loan.originated_at,
+          totalPrincipalPaid: loan.total_principal_paid,
+          paymentsMade: loan.payments_made,
+          paymentsRemaining: loan.payments_remaining,
+          fundedAt: loan.funded_at,
           maturityDate: loan.maturity_date,
         },
         payments: payments.map((p: Record<string, unknown>) => ({
           id: p.id,
+          paymentNumber: p.payment_number,
           dueDate: p.due_date,
-          amount: p.amount,
-          principalPortion: p.principal_portion,
-          interestPortion: p.interest_portion,
+          totalAmount: p.total_amount,
+          principalAmount: p.principal_amount,
+          interestAmount: p.interest_amount,
+          paidAmount: p.paid_amount,
+          remainingBalance: p.remaining_balance,
+          paymentMethod: p.payment_method,
           status: p.status,
-          paidAt: p.paid_at,
+          paidDate: p.paid_date,
         })),
         amortizationSchedule: schedule.map((s: Record<string, unknown>) => ({
           paymentNumber: s.payment_number,
           dueDate: s.due_date,
           payment: s.payment_amount,
-          principal: s.principal_portion,
-          interest: s.interest_portion,
+          principal: s.principal_amount,
+          interest: s.interest_amount,
           balance: s.remaining_balance,
         })),
       },
@@ -258,15 +283,15 @@ loansRouter.get('/applications/all', async (req: Request, res: Response): Promis
       success: true,
       data: applications.map((a: Record<string, unknown>) => ({
         id: a.id,
-        loanType: a.loan_type,
+        loanProductId: a.loan_product_id,
         requestedAmount: a.requested_amount,
         requestedTermMonths: a.requested_term_months,
         status: a.status,
         approvedAmount: a.approved_amount,
-        approvedRate: a.approved_rate,
+        approvedApr: a.approved_apr,
         approvedTermMonths: a.approved_term_months,
         monthlyPayment: a.monthly_payment,
-        riskGrade: a.risk_grade,
+        riskTier: a.risk_tier_at_application,
         decisionAt: a.decision_at,
         submittedAt: a.submitted_at,
       })),
@@ -303,8 +328,8 @@ loansRouter.post('/:id/payoff-quote', async (req: Request, res: Response): Promi
     }
 
     // Calculate payoff amount (current balance + accrued interest)
-    const dailyRate = loan.interest_rate / 365;
-    const lastPaymentDate = loan.last_payment_date || loan.originated_at;
+    const dailyRate = loan.apr / 365;
+    const lastPaymentDate = loan.next_payment_date || loan.funded_at;
     const daysSincePayment = Math.floor(
       (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
     );

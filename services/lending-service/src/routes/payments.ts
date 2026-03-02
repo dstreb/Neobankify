@@ -15,8 +15,7 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     const schema = z.object({
       loanId: z.string().uuid(),
       amount: z.number().positive(),
-      paymentMethod: z.enum(['ach', 'debit_card', 'bank_transfer']).default('ach'),
-      fundingSourceId: z.string().uuid(),
+      paymentMethod: z.enum(['ach', 'debit_card', 'check', 'auto_pay']).default('ach'),
     });
 
     const parsed = schema.safeParse(req.body);
@@ -45,8 +44,8 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Calculate interest allocation
-    const dailyRate = loan.interest_rate / 365;
-    const lastPaymentDate = loan.last_payment_date || loan.originated_at;
+    const dailyRate = loan.apr / 365;
+    const lastPaymentDate = loan.next_payment_date || loan.funded_at;
     const daysSincePayment = Math.floor(
       (Date.now() - new Date(lastPaymentDate).getTime()) / (1000 * 60 * 60 * 24),
     );
@@ -56,18 +55,27 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     const principalPortion = Math.round((parsed.data.amount - interestPortion) * 100) / 100;
     const newBalance = Math.max(0, Math.round((loan.current_balance - principalPortion) * 100) / 100);
 
+    // Determine payment number (next in sequence)
+    const lastPayment = await db('loan_payments')
+      .where({ loan_id: loan.id })
+      .orderBy('payment_number', 'desc')
+      .first();
+    const paymentNumber = lastPayment ? (lastPayment.payment_number as number) + 1 : 1;
+
     const paymentId = uuidv4();
     await db('loan_payments').insert({
       id: paymentId,
       loan_id: loan.id,
       tenant_id: tenantId,
-      user_id: userId,
-      amount: parsed.data.amount,
-      principal_portion: principalPortion,
-      interest_portion: interestPortion,
+      payment_number: paymentNumber,
+      total_amount: parsed.data.amount,
+      principal_amount: principalPortion,
+      interest_amount: interestPortion,
+      paid_amount: parsed.data.amount,
+      paid_date: new Date(),
+      remaining_balance: newBalance,
       payment_method: parsed.data.paymentMethod,
-      funding_source_id: parsed.data.fundingSourceId,
-      status: 'processing',
+      status: 'pending',
       due_date: loan.next_payment_date,
       created_at: new Date(),
       updated_at: new Date(),
@@ -83,12 +91,14 @@ paymentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       .where({ id: loan.id })
       .update({
         current_balance: newBalance,
-        total_paid: (loan.total_paid || 0) + parsed.data.amount,
+        total_principal_paid: (loan.total_principal_paid || 0) + principalPortion,
         total_interest_paid: (loan.total_interest_paid || 0) + interestPortion,
-        last_payment_date: new Date(),
+        payments_made: (loan.payments_made || 0) + 1,
+        payments_remaining: Math.max(0, (loan.payments_remaining || 0) - 1),
         next_payment_date: loanStatus === 'active' ? nextPaymentDate : null,
         next_payment_amount: loanStatus === 'active' ? loan.monthly_payment : null,
         status: loanStatus,
+        paid_off_at: loanStatus === 'paid_off' ? new Date() : null,
         updated_at: new Date(),
       });
 
@@ -155,8 +165,11 @@ paymentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const loanId = req.query.loanId as string | undefined;
 
+    // loan_payments doesn't have user_id — join through loans table
     let query = db('loan_payments')
-      .where({ user_id: userId, tenant_id: tenantId });
+      .join('loans', 'loan_payments.loan_id', 'loans.id')
+      .where({ 'loans.user_id': userId, 'loan_payments.tenant_id': tenantId })
+      .select('loan_payments.*');
 
     if (loanId) query = query.where({ loan_id: loanId });
 
@@ -167,13 +180,16 @@ paymentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
       data: payments.map((p: Record<string, unknown>) => ({
         id: p.id,
         loanId: p.loan_id,
-        amount: p.amount,
-        principalPortion: p.principal_portion,
-        interestPortion: p.interest_portion,
+        paymentNumber: p.payment_number,
+        totalAmount: p.total_amount,
+        principalAmount: p.principal_amount,
+        interestAmount: p.interest_amount,
+        paidAmount: p.paid_amount,
+        remainingBalance: p.remaining_balance,
         paymentMethod: p.payment_method,
         status: p.status,
         dueDate: p.due_date,
-        paidAt: p.paid_at,
+        paidDate: p.paid_date,
         createdAt: p.created_at,
       })),
     });
@@ -198,7 +214,7 @@ paymentsRouter.post('/autopay', async (req: Request, res: Response): Promise<voi
       loanId: z.string().uuid(),
       enabled: z.boolean(),
       fundingSourceId: z.string().uuid(),
-      paymentMethod: z.enum(['ach', 'debit_card', 'bank_transfer']).default('ach'),
+      paymentMethod: z.enum(['ach', 'debit_card', 'check', 'auto_pay']).default('ach'),
       extraPaymentAmount: z.number().min(0).default(0),
     });
 
@@ -230,10 +246,7 @@ paymentsRouter.post('/autopay', async (req: Request, res: Response): Promise<voi
     await db('loans')
       .where({ id: loan.id })
       .update({
-        autopay_enabled: parsed.data.enabled,
-        autopay_funding_source_id: parsed.data.fundingSourceId,
-        autopay_payment_method: parsed.data.paymentMethod,
-        autopay_extra_amount: parsed.data.extraPaymentAmount,
+        auto_pay_enabled: parsed.data.enabled,
         updated_at: new Date(),
       });
 

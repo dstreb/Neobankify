@@ -36,44 +36,65 @@ underwritingRouter.post('/evaluate/:applicationId', async (req: Request, res: Re
       ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
-    // In production, credit score would come from a bureau pull (Experian, TransUnion, Equifax)
-    // For now, use a simulated score based on user profile
-    const creditScore = 700; // Placeholder — would be fetched from credit bureau API
+    // Get credit score from credit_profiles table (populated by credit bureau pulls)
+    // Falls back to 0 if no profile exists, which will trigger a denial with adverse action
+    const creditProfile = await db('credit_profiles')
+      .where({ user_id: userId, tenant_id: tenantId, status: 'active' })
+      .first();
+
+    const creditScore = creditProfile?.credit_score || 0;
+
+    // Get loan product to determine loan type
+    const loanProduct = await db('loan_products')
+      .where({ id: application.loan_product_id })
+      .first();
+
+    // Estimate monthly debt payments from credit profile or housing payment
+    const monthlyDebtPayments = creditProfile?.total_monthly_payments || application.housing_payment || 0;
 
     const input: UnderwritingInput = {
       creditScore,
       annualIncome: application.annual_income,
-      monthlyDebtPayments: application.monthly_debt_payments,
+      monthlyDebtPayments,
       employmentStatus: application.employment_status,
-      employmentLengthMonths: application.employment_length_months,
+      employmentLengthMonths: (application.years_employed || 0) * 12,
       requestedAmount: application.requested_amount,
       requestedTermMonths: application.requested_term_months,
-      loanPurpose: application.loan_purpose,
+      loanPurpose: application.purpose || '',
       existingCustomer: accountAgeDays > 0,
       accountAgeDays,
       collateralValue: application.collateral_value || undefined,
-      loanType: application.loan_type,
+      loanType: loanProduct?.product_type || 'personal',
     };
 
     const result = underwrite(input);
 
-    // Update application with decision
+    // Update application with decision — columns aligned with loan_applications schema
     await db('loan_applications')
       .where({ id: application.id })
       .update({
         status: result.approved ? 'approved' : 'denied',
-        credit_score: creditScore,
-        decision_score: result.decisionScore,
-        risk_grade: result.riskGrade,
+        credit_score_at_application: creditScore,
+        dti_at_application: result.dti,
+        risk_tier_at_application: result.riskGrade,
         approved_amount: result.approved ? Math.min(result.maxApprovedAmount, application.requested_amount) : null,
-        approved_rate: result.approved ? result.approvedRate : null,
+        approved_apr: result.approved ? result.approvedRate : null,
         approved_term_months: result.approved ? result.approvedTermMonths : null,
         monthly_payment: result.approved ? result.monthlyPayment : null,
-        dti_ratio: result.dti,
-        underwriting_factors: result.factors,
+        underwriting_decision: {
+          decisionScore: result.decisionScore,
+          factors: result.factors,
+          explanation: result.explanation,
+        },
+        ai_risk_assessment: {
+          riskGrade: result.riskGrade,
+          decisionScore: result.decisionScore,
+          dti: result.dti,
+          approved: result.approved,
+        },
         adverse_action_reasons: result.adverseActionReasons,
-        decision_explanation: result.explanation,
         decision_at: new Date(),
+        expires_at: result.approved ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
         updated_at: new Date(),
       });
 
@@ -228,24 +249,29 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
     const firstPaymentDate = new Date(originatedAt);
     firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
 
+    // Generate a unique loan number
+    const loanNumber = `LN-${Date.now().toString(36).toUpperCase()}-${loanId.substring(0, 4).toUpperCase()}`;
+
     await db('loans').insert({
       id: loanId,
       application_id: application.id,
-      tenant_id: tenantId,
       user_id: userId,
-      loan_type: application.loan_type,
+      tenant_id: tenantId,
+      loan_product_id: application.loan_product_id,
+      loan_number: loanNumber,
       principal_amount: application.approved_amount,
       current_balance: application.approved_amount,
-      interest_rate: application.approved_rate,
+      apr: application.approved_apr,
       term_months: application.approved_term_months,
       monthly_payment: application.monthly_payment,
-      risk_grade: application.risk_grade,
+      origination_fee: application.origination_fee || 0,
+      total_interest_paid: 0,
+      total_principal_paid: 0,
+      payments_remaining: application.approved_term_months,
       status: 'active',
       next_payment_date: firstPaymentDate,
       next_payment_amount: application.monthly_payment,
-      total_paid: 0,
-      total_interest_paid: 0,
-      originated_at: originatedAt,
+      funded_at: originatedAt,
       maturity_date: maturityDate,
       created_at: originatedAt,
       updated_at: originatedAt,
@@ -254,10 +280,10 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
     // Update application status
     await db('loan_applications')
       .where({ id: application.id })
-      .update({ status: 'originated', updated_at: new Date() });
+      .update({ status: 'funded', funded_at: originatedAt, updated_at: new Date() });
 
     // Generate amortization schedule
-    const monthlyRate = application.approved_rate / 12;
+    const monthlyRate = application.approved_apr / 12;
     let balance = application.approved_amount;
     const scheduleRows = [];
 
@@ -273,19 +299,22 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
       scheduleRows.push({
         id: uuidv4(),
         loan_id: loanId,
+        tenant_id: tenantId,
         payment_number: i,
         due_date: dueDate,
-        payment_amount: application.monthly_payment,
-        principal_portion: principalPortion,
-        interest_portion: interestPortion,
+        total_amount: application.monthly_payment,
+        principal_amount: principalPortion,
+        interest_amount: interestPortion,
         remaining_balance: balance,
+        status: 'scheduled',
         created_at: originatedAt,
+        updated_at: originatedAt,
       });
     }
 
-    // Batch insert amortization schedule
+    // Batch insert payment schedule
     if (scheduleRows.length > 0) {
-      await db('loan_amortization_schedule').insert(scheduleRows);
+      await db('loan_payments').insert(scheduleRows);
     }
 
     // Audit log
@@ -300,7 +329,7 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
       after_state: {
         loanId,
         principal: application.approved_amount,
-        rate: application.approved_rate,
+        apr: application.approved_apr,
         termMonths: application.approved_term_months,
       },
       ip_address: req.ip || null,
@@ -322,7 +351,7 @@ underwritingRouter.post('/originate/:applicationId', async (req: Request, res: R
         applicationId: application.id,
         status: 'active',
         principalAmount: application.approved_amount,
-        interestRate: application.approved_rate,
+        apr: application.approved_apr,
         termMonths: application.approved_term_months,
         monthlyPayment: application.monthly_payment,
         firstPaymentDate: firstPaymentDate.toISOString(),
