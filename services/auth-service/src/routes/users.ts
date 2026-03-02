@@ -23,7 +23,7 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
 
     const user = await db('users')
       .where({ id: userId, tenant_id: tenantId })
-      .select('id', 'email', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
+      .select('id', 'email', 'first_name', 'last_name', 'kyc_status', 'risk_profile', 'goals', 'preferences', 'created_at')
       .first();
 
     if (!user) {
@@ -41,6 +41,8 @@ userRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
       data: {
         id: user.id,
         email: user.email,
+        firstName: user.first_name || null,
+        lastName: user.last_name || null,
         kycStatus: user.kyc_status,
         riskProfile: user.risk_profile,
         goals: user.goals,

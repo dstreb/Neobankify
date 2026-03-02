@@ -70,38 +70,40 @@ describe('Plaid Client', () => {
       process.env = originalEnv;
     });
 
-    it('should allow unverified webhooks in sandbox mode', () => {
+    it('should allow unverified webhooks in sandbox mode', async () => {
       process.env.PLAID_ENV = 'sandbox';
-      const result = verifyWebhookSignature('{"test": true}', {});
+      const result = await verifyWebhookSignature('{"test": true}', {});
 
       expect(result).toBe(true);
     });
 
-    it('should reject missing verification header in production', () => {
+    it('should reject missing verification header in production', async () => {
       process.env.PLAID_ENV = 'production';
-      const result = verifyWebhookSignature('{"test": true}', {});
+      const result = await verifyWebhookSignature('{"test": true}', {});
 
       expect(result).toBe(false);
     });
 
-    it('should accept valid JWT format verification header', () => {
-      const result = verifyWebhookSignature('{"test": true}', {
-        'plaid-verification': 'header.payload.signature',
+    it('should reject JWT without valid kid/alg in header', async () => {
+      // base64url of '{"alg":"none"}' = eyJhbGciOiJub25lIn0
+      const fakeHeader = Buffer.from(JSON.stringify({alg: 'none'})).toString('base64url');
+      const result = await verifyWebhookSignature('{"test": true}', {
+        'plaid-verification': `${fakeHeader}.payload.signature`,
       });
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
-    it('should reject invalid JWT format', () => {
-      const result = verifyWebhookSignature('{"test": true}', {
+    it('should reject invalid JWT format', async () => {
+      const result = await verifyWebhookSignature('{"test": true}', {
         'plaid-verification': 'invalid-no-dots',
       });
 
       expect(result).toBe(false);
     });
 
-    it('should reject JWT with wrong number of parts', () => {
-      const result = verifyWebhookSignature('{"test": true}', {
+    it('should reject JWT with wrong number of parts', async () => {
+      const result = await verifyWebhookSignature('{"test": true}', {
         'plaid-verification': 'only.two',
       });
 

@@ -142,8 +142,9 @@ export async function syncItemTransactions(params: {
   const result = await syncTransactions(client, accessToken, item.sync_cursor || undefined);
 
   // Get account mapping (Plaid account ID -> our account ID)
+  // Scope to this specific Plaid item to avoid cross-institution account mapping
   const accounts = await db('linked_accounts')
-    .where({ user_id: item.user_id, provider: 'plaid', status: 'active' })
+    .where({ user_id: item.user_id, plaid_item_id: params.plaidItemDbId, provider: 'plaid', status: 'active' })
     .select('id', 'provider_account_id');
 
   const accountMap = new Map(accounts.map((a: { id: string; provider_account_id: string }) => [a.provider_account_id, a.id]));

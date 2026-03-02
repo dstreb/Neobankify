@@ -17,7 +17,7 @@ export const webhookRouter = Router();
 webhookRouter.post('/plaid', async (req: Request, res: Response): Promise<void> => {
   try {
     // Verify webhook signature
-    const isValid = verifyWebhookSignature(
+    const isValid = await verifyWebhookSignature(
       JSON.stringify(req.body),
       req.headers as Record<string, string>,
     );
