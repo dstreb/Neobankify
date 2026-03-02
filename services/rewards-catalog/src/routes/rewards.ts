@@ -131,8 +131,8 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
     const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 100);
     const cursor = req.query.cursor as string;
 
-    let query = db('agent_decisions')
-      .where({ user_id: userId, tenant_id: tenantId, agent_type: 'rewards_optimization' })
+    let query = db('rewards_earned')
+      .where({ user_id: userId, tenant_id: tenantId })
       .orderBy('created_at', 'desc')
       .limit(limit + 1);
 
@@ -140,23 +140,26 @@ rewardsRouter.get('/history', async (req: Request, res: Response): Promise<void>
       query = query.where('created_at', '<', cursor);
     }
 
-    const decisions = await query;
-    const hasMore = decisions.length > limit;
-    if (hasMore) decisions.pop();
+    const rows = await query;
+    const hasMore = rows.length > limit;
+    if (hasMore) rows.pop();
 
     res.json({
       success: true,
-      data: decisions.map(d => ({
-        id: d.id,
-        decisionType: d.decision_type,
-        decision: d.decision,
-        reasoning: d.reasoning,
-        confidenceScore: d.confidence_score,
-        outcome: d.outcome,
-        createdAt: d.created_at,
+      data: rows.map(r => ({
+        id: r.id,
+        transactionId: r.transaction_id,
+        cardId: r.card_id,
+        rewardProgramId: r.reward_program_id,
+        pointsEarned: r.points_earned,
+        cashbackEarned: r.cashback_earned,
+        category: r.category,
+        wasOptimal: r.was_optimal,
+        missedValue: r.missed_value,
+        createdAt: r.created_at,
       })),
       meta: {
-        cursor: decisions.length > 0 ? decisions[decisions.length - 1].created_at : null,
+        cursor: rows.length > 0 ? rows[rows.length - 1].created_at : null,
         hasMore,
       },
     });

@@ -59,9 +59,9 @@ export const tenantResolver = async (
     // Uses Redis cache with DB fallback for performance
     const redis = req.app.locals.redis;
     let tenantSlug = '';
-    // Use raw tenantId as cache key — the gateway Redis has no keyPrefix.
-    // The tenant-service Redis uses keyPrefix:'tenant:' so its keys are 'tenant:<uuid>'.
-    // The gateway maintains its own independent cache namespace.
+    // Use raw tenantId as cache key — the gateway Redis client has keyPrefix:'tenant:'
+    // (matching the tenant-service), so redis.get(tenantId) actually reads 'tenant:<uuid>'.
+    // This ensures admin invalidation (redis.del(tenantId)) clears the gateway cache too.
     const cacheKey = tenantId;
 
     if (redis) {

@@ -13,9 +13,9 @@ export function AddCardScreen({ navigation }: CardsScreenProps<'AddCard'>) {
   const { colors } = theme;
 
   const [cardName, setCardName] = useState('');
+  const [issuer, setIssuer] = useState('');
   const [lastFour, setLastFour] = useState('');
   const [network, setNetwork] = useState('');
-  const [expiration, setExpiration] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,14 +34,18 @@ export function AddCardScreen({ navigation }: CardsScreenProps<'AddCard'>) {
       setError('Please select a card network');
       return;
     }
+    if (!issuer.trim()) {
+      setError('Please enter the card issuer');
+      return;
+    }
 
     setLoading(true);
     try {
       await cardsApi.addCard({
         cardName,
+        issuer: issuer.trim(),
         lastFour,
         network,
-        expirationDate: expiration,
         isPrimary: false,
       });
       navigation.goBack();
@@ -84,20 +88,19 @@ export function AddCardScreen({ navigation }: CardsScreenProps<'AddCard'>) {
           />
 
           <Input
+            label="Card Issuer"
+            placeholder="e.g. Chase, American Express, Capital One"
+            value={issuer}
+            onChangeText={setIssuer}
+            leftIcon="business-outline"
+          />
+
+          <Input
             label="Card Network"
             placeholder="visa, mastercard, amex, or discover"
             value={network}
             onChangeText={(text) => setNetwork(text.toLowerCase())}
             autoCapitalize="none"
-          />
-
-          <Input
-            label="Expiration Date"
-            placeholder="MM/YY"
-            value={expiration}
-            onChangeText={setExpiration}
-            keyboardType="numeric"
-            maxLength={5}
           />
 
           <Button
