@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../config/logger';
+import { PUBLIC_PATHS } from '../config/paths';
 
 interface JwtPayload {
   sub: string;
@@ -10,15 +11,6 @@ interface JwtPayload {
   iat: number;
   exp: number;
 }
-
-const PUBLIC_PATHS = [
-  '/health',
-  '/v1/auth/register',
-  '/v1/auth/login',
-  '/v1/auth/refresh',
-  '/v1/auth/kyc/webhook',
-  '/v1/webhooks/plaid',
-];
 
 /**
  * Validates JWT tokens and extracts user identity.

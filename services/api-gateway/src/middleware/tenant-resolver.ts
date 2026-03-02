@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
+import { NO_AUTH_NO_TENANT_PATHS } from '../config/paths';
 
 export interface TenantContext {
   tenantId: string;
@@ -25,9 +26,9 @@ export const tenantResolver = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Skip tenant resolution for health checks and external webhooks.
-    // Use exact matches to stay consistent with auth middleware's PUBLIC_PATHS.
-    if (req.path === '/health' || req.path === '/v1/auth/kyc/webhook' || req.path === '/v1/webhooks/plaid') {
+    // Skip tenant resolution for paths that need neither auth nor tenant context.
+    // Paths are defined in config/paths.ts (single source of truth shared with auth middleware).
+    if (NO_AUTH_NO_TENANT_PATHS.some(p => req.path === p || req.path === p + '/')) {
       next();
       return;
     }
