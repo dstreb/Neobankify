@@ -147,8 +147,11 @@ export function calculateRewards(
     : null;
 
   // Calculate missed value
+  // When cardUsed is null (e.g., Kafka-consumed transactions), missed value is indeterminate — set to 0
   const actualValue = actualCard ? actualCard.effectiveValue : 0;
-  const missedValue = Math.max(0, optimalCard.effectiveValue - actualValue);
+  const missedValue = txn.cardUsed
+    ? Math.max(0, optimalCard.effectiveValue - actualValue)
+    : 0;
   const wasOptimal = !txn.cardUsed || txn.cardUsed === optimalCard.cardId;
 
   // Generate recommendation if value delta is significant
