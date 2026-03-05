@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import type { ProfileScreenProps } from '../../types/navigation';
@@ -21,17 +22,24 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: 'link-outline', label: 'Linked Accounts', screen: 'LinkedAccounts' },
 ];
 
-const WEALTH_ITEMS: MenuItem[] = [
-  { icon: 'gift-outline', label: 'Rewards', screen: 'RewardsSummary' },
-  { icon: 'trending-up-outline', label: 'Investing', screen: 'InvestingDashboard' },
-  { icon: 'bar-chart-outline', label: 'Trading', screen: 'TradingDashboard' },
-  { icon: 'cash-outline', label: 'Lending', screen: 'LendingDashboard' },
+interface WealthItem extends MenuItem {
+  flag: 'rewardsEnabled' | 'investingEnabled' | 'tradingEnabled' | 'lendingEnabled';
+}
+
+const ALL_WEALTH_ITEMS: WealthItem[] = [
+  { icon: 'gift-outline', label: 'Rewards', screen: 'RewardsSummary', flag: 'rewardsEnabled' },
+  { icon: 'trending-up-outline', label: 'Investing', screen: 'InvestingDashboard', flag: 'investingEnabled' },
+  { icon: 'bar-chart-outline', label: 'Trading', screen: 'TradingDashboard', flag: 'tradingEnabled' },
+  { icon: 'cash-outline', label: 'Lending', screen: 'LendingDashboard', flag: 'lendingEnabled' },
 ];
 
 export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>) {
   const { theme, isDark, toggleTheme } = useTheme();
   const { colors, spacing } = theme;
   const { user, logout } = useAuth();
+  const { featureFlags } = useTenant();
+
+  const wealthItems = ALL_WEALTH_ITEMS.filter((item) => featureFlags[item.flag]);
 
   const handleLogout = async () => {
     try {
@@ -115,27 +123,29 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
         </Card>
 
         {/* Wealth & Features */}
-        <Card style={{ marginBottom: spacing.lg }} padding="none">
-          {WEALTH_ITEMS.map((item, index) => (
-            <React.Fragment key={item.screen}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => navigation.navigate(item.screen as never)}
-              >
-                <View style={styles.menuLeft}>
-                  <Ionicons name={item.icon} size={22} color={colors.primary} />
-                  <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
-                </View>
-                <View style={styles.menuRight}>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-                </View>
-              </TouchableOpacity>
-              {index < WEALTH_ITEMS.length - 1 && (
-                <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
-              )}
-            </React.Fragment>
-          ))}
-        </Card>
+        {wealthItems.length > 0 && (
+          <Card style={{ marginBottom: spacing.lg }} padding="none">
+            {wealthItems.map((item, index) => (
+              <React.Fragment key={item.screen}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => navigation.navigate(item.screen as never)}
+                >
+                  <View style={styles.menuLeft}>
+                    <Ionicons name={item.icon} size={22} color={colors.primary} />
+                    <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
+                  </View>
+                  <View style={styles.menuRight}>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                  </View>
+                </TouchableOpacity>
+                {index < wealthItems.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
+                )}
+              </React.Fragment>
+            ))}
+          </Card>
+        )}
 
         {/* Logout */}
         <Button

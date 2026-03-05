@@ -188,9 +188,6 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         <View>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('RewardsSummary')}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-            </TouchableOpacity>
           </View>
           <Card padding="none">
             {recentTransactions.length > 0 ? (
@@ -198,7 +195,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
                 <React.Fragment key={txn.id}>
                   <TransactionItem
                     transaction={txn}
-                    onPress={() => navigation.navigate('RewardsSummary')}
+                    onPress={() => navigation.navigate('TransactionDetail', { transactionId: txn.id })}
                   />
                   {i < recentTransactions.length - 1 && (
                     <View style={[styles.txnDivider, { backgroundColor: colors.borderLight }]} />
