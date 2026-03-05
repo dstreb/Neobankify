@@ -34,6 +34,7 @@ export type AIStackParamList = {
 export type OffersStackParamList = {
   OffersHome: undefined;
   ProfileMain: undefined;
+  AddAccount: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -48,6 +49,7 @@ export type OffersStackParamList = {
 export type WalletStackParamList = {
   WalletHome: undefined;
   ProfileMain: undefined;
+  AddAccount: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -63,6 +65,7 @@ export type HistoryStackParamList = {
   HistoryHome: undefined;
   ProfileMain: undefined;
   TransactionDetail: { transactionId: string };
+  AddAccount: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -78,6 +81,7 @@ export type HomeStackParamList = {
   DashboardHome: undefined;
   NotificationsList: undefined;
   ProfileMain: undefined;
+  AddAccount: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;

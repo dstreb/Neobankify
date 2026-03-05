@@ -203,7 +203,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             </View>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.addRow}>
+        <TouchableOpacity style={styles.addRow} onPress={() => navigation.navigate('AddAccount')}>
           <Text style={[styles.addRowText, { color: colors.primary }]}>Add New Account</Text>
           <Ionicons name="add" size={18} color={colors.primary} />
         </TouchableOpacity>
@@ -699,7 +699,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             {/* Add Account */}
             <TouchableOpacity
               style={[styles.pickerItem, styles.pickerAddRow]}
-              onPress={() => setShowAccountPicker(false)}
+              onPress={() => { setShowAccountPicker(false); navigation.navigate('AddAccount'); }}
             >
               <View style={[styles.pickerIcon, { backgroundColor: colors.brand10 }]}>
                 <Ionicons name="add" size={22} color={colors.primary} />

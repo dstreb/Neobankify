@@ -12,6 +12,8 @@ import { RewardsSummaryScreen } from '../screens/rewards/RewardsSummaryScreen';
 import { InvestingDashboardScreen } from '../screens/investing/InvestingDashboardScreen';
 import { TradingDashboardScreen } from '../screens/trading/TradingDashboardScreen';
 import { LendingDashboardScreen } from '../screens/lending/LendingDashboardScreen';
+// Add Account flow
+import { AddAccountScreen } from '../screens/accounts/AddAccountScreen';
 
 const Stack = createNativeStackNavigator<OffersStackParamList>();
 
@@ -20,6 +22,7 @@ export function OffersNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="OffersHome" component={OffersTabScreen} />
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="AddAccount" component={AddAccountScreen} />
       {/* Profile sub-screens */}
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
