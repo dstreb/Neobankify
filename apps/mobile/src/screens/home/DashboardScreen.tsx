@@ -116,7 +116,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
       <TouchableOpacity style={styles.accountPill}>
         <Ionicons name="briefcase-outline" size={14} color="#FFFFFF" />
         <Text style={styles.accountPillText}>
-          {selectedAccount.name} \u2022\u2022{selectedAccount.lastFour}
+          {selectedAccount.name} {'\u2022\u2022'}{selectedAccount.lastFour}
         </Text>
         <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
       </TouchableOpacity>
@@ -183,7 +183,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             <View style={styles.accountInfo}>
               <Text style={[styles.accountName, { color: colors.textPrimary }]}>{account.name}</Text>
               <Text style={[styles.accountType, { color: colors.textSecondary }]}>
-                {account.type} \u2022\u2022{account.lastFour}
+                {account.type} {'\u2022\u2022'}{account.lastFour}
               </Text>
             </View>
             <View style={styles.accountBalanceRow}>
@@ -505,7 +505,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             <View style={styles.cardItemInfo}>
               <Text style={[styles.cardItemName, { color: colors.textPrimary }]}>{cardItem.name}</Text>
               <Text style={[styles.cardItemType, { color: colors.textSecondary }]}>
-                {cardItem.type} \u2022\u2022{cardItem.lastFour}
+                {cardItem.type} {'\u2022\u2022'}{cardItem.lastFour}
               </Text>
             </View>
             <Text style={[styles.cardItemBalance, { color: colors.textPrimary }]}>
