@@ -6,6 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,7 +72,12 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
   const { featureFlags } = useTenant();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedAccount] = useState(MOCK_ACCOUNTS[0]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('consolidated');
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
+
+  const selectedAccount = selectedAccountId === 'consolidated'
+    ? null
+    : MOCK_ACCOUNTS.find((a) => a.id === selectedAccountId) || MOCK_ACCOUNTS[0];
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -113,17 +120,19 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.accountPill}>
-        <Ionicons name="briefcase-outline" size={14} color="#FFFFFF" />
+      <TouchableOpacity style={styles.accountPill} onPress={() => setShowAccountPicker(true)}>
+        <Ionicons name={selectedAccount ? 'wallet-outline' : 'apps-outline'} size={14} color="#FFFFFF" />
         <Text style={styles.accountPillText}>
-          {selectedAccount.name} {'\u2022\u2022'}{selectedAccount.lastFour}
+          {selectedAccount
+            ? `${selectedAccount.name} ${'\u2022\u2022'}${selectedAccount.lastFour}`
+            : 'Consolidated'}
         </Text>
         <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
       </TouchableOpacity>
 
       <View style={styles.balanceRow}>
         <Text style={styles.flagEmoji}>{'\ud83c\uddfa\ud83c\uddf8'}</Text>
-        <Text style={styles.balanceAmount}> {formatCurrency(totalBalance)}</Text>
+        <Text style={styles.balanceAmount}> {formatCurrency(selectedAccount ? selectedAccount.balance : totalBalance)}</Text>
         <Ionicons name="trending-up" size={18} color="#10B981" style={{ marginLeft: 6 }} />
       </View>
 
@@ -628,6 +637,78 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         {renderNewsResources()}
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Account Picker Modal */}
+      <Modal
+        visible={showAccountPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAccountPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAccountPicker(false)}>
+          <Pressable style={[styles.pickerSheet, { backgroundColor: colors.surface }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>Select Account</Text>
+
+            {/* Consolidated option */}
+            <TouchableOpacity
+              style={[
+                styles.pickerItem,
+                selectedAccountId === 'consolidated' && { backgroundColor: colors.brand10 },
+                { borderBottomColor: colors.borderLight },
+              ]}
+              onPress={() => { setSelectedAccountId('consolidated'); setShowAccountPicker(false); }}
+            >
+              <View style={[styles.pickerIcon, { backgroundColor: selectedAccountId === 'consolidated' ? colors.primary : colors.brand10 }]}>
+                <Ionicons name="apps-outline" size={20} color={selectedAccountId === 'consolidated' ? '#FFFFFF' : colors.primary} />
+              </View>
+              <View style={styles.pickerInfo}>
+                <Text style={[styles.pickerName, { color: colors.textPrimary }]}>Consolidated</Text>
+                <Text style={[styles.pickerSub, { color: colors.textSecondary }]}>All accounts combined</Text>
+              </View>
+              <Text style={[styles.pickerBalance, { color: colors.textPrimary }]}>{formatCurrency(totalBalance)}</Text>
+              {selectedAccountId === 'consolidated' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginLeft: 8 }} />
+              )}
+            </TouchableOpacity>
+
+            {/* Individual accounts */}
+            {MOCK_ACCOUNTS.map((account) => (
+              <TouchableOpacity
+                key={account.id}
+                style={[
+                  styles.pickerItem,
+                  selectedAccountId === account.id && { backgroundColor: colors.brand10 },
+                  { borderBottomColor: colors.borderLight },
+                ]}
+                onPress={() => { setSelectedAccountId(account.id); setShowAccountPicker(false); }}
+              >
+                <View style={[styles.pickerIcon, { backgroundColor: selectedAccountId === account.id ? colors.primary : colors.brand10 }]}>
+                  <Ionicons name={account.icon} size={20} color={selectedAccountId === account.id ? '#FFFFFF' : colors.primary} />
+                </View>
+                <View style={styles.pickerInfo}>
+                  <Text style={[styles.pickerName, { color: colors.textPrimary }]}>{account.name}</Text>
+                  <Text style={[styles.pickerSub, { color: colors.textSecondary }]}>{account.type} {'\u2022\u2022'}{account.lastFour}</Text>
+                </View>
+                <Text style={[styles.pickerBalance, { color: colors.textPrimary }]}>{formatCurrency(account.balance)}</Text>
+                {selectedAccountId === account.id && (
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginLeft: 8 }} />
+                )}
+              </TouchableOpacity>
+            ))}
+
+            {/* Add Account */}
+            <TouchableOpacity
+              style={[styles.pickerItem, styles.pickerAddRow]}
+              onPress={() => setShowAccountPicker(false)}
+            >
+              <View style={[styles.pickerIcon, { backgroundColor: colors.brand10 }]}>
+                <Ionicons name="add" size={22} color={colors.primary} />
+              </View>
+              <Text style={[styles.pickerAddText, { color: colors.primary }]}>Add Account</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1031,4 +1112,68 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   wealthLabel: { fontSize: 14, fontWeight: '600' },
+
+  // Account Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pickerSheet: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  pickerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  pickerName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pickerSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  pickerBalance: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  pickerAddRow: {
+    borderBottomWidth: 0,
+    marginTop: 4,
+  },
+  pickerAddText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
 });
