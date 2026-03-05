@@ -4,24 +4,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import type { MainTabParamList } from '../types/navigation';
 import { HomeNavigator } from './HomeNavigator';
-import { PaymentsNavigator } from './PaymentsNavigator';
-import { CardsNavigator } from './CardsNavigator';
+import { OffersNavigator } from './OffersNavigator';
 import { AINavigator } from './AINavigator';
-import { ProfileNavigator } from './ProfileNavigator';
+import { WalletNavigator } from './WalletNavigator';
+import { HistoryNavigator } from './HistoryNavigator';
 
 // =====================================================
 // Main Tab Navigator - swiftbank 5-tab pattern
-// Home | Payments | Card | AI | Profile
+// Home | Offers | AI | Wallet | History
 // =====================================================
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const TAB_ICONS: Record<keyof MainTabParamList, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
   Home: { focused: 'home', unfocused: 'home-outline' },
-  Payments: { focused: 'swap-horizontal', unfocused: 'swap-horizontal-outline' },
-  Card: { focused: 'card', unfocused: 'card-outline' },
+  Offers: { focused: 'pricetag', unfocused: 'pricetag-outline' },
   AI: { focused: 'sparkles', unfocused: 'sparkles-outline' },
-  Profile: { focused: 'person', unfocused: 'person-outline' },
+  Wallet: { focused: 'wallet', unfocused: 'wallet-outline' },
+  History: { focused: 'time', unfocused: 'time-outline' },
 };
 
 export function MainTabNavigator() {
@@ -32,7 +32,7 @@ export function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           const iconConfig = TAB_ICONS[route.name];
           const iconName = focused ? iconConfig.focused : iconConfig.unfocused;
           return <Ionicons name={iconName} size={24} color={color} />;
@@ -55,10 +55,10 @@ export function MainTabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Payments" component={PaymentsNavigator} />
-      <Tab.Screen name="Card" component={CardsNavigator} />
+      <Tab.Screen name="Offers" component={OffersNavigator} />
       <Tab.Screen name="AI" component={AINavigator} options={{ tabBarLabel: 'AI' }} />
-      <Tab.Screen name="Profile" component={ProfileNavigator} />
+      <Tab.Screen name="Wallet" component={WalletNavigator} />
+      <Tab.Screen name="History" component={HistoryNavigator} />
     </Tab.Navigator>
   );
 }

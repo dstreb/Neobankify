@@ -27,6 +27,8 @@ import { LoanDetailScreen } from '../screens/lending/LoanDetailScreen';
 import { MakePaymentScreen } from '../screens/lending/MakePaymentScreen';
 // Transaction detail (accessible from dashboard)
 import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
+// Profile (accessible from avatar)
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -35,6 +37,7 @@ export function HomeNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DashboardHome" component={DashboardScreen} />
       <Stack.Screen name="NotificationsList" component={NotificationsListScreen} />
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       {/* Rewards */}
       <Stack.Screen name="RewardsSummary" component={RewardsSummaryScreen} />
       <Stack.Screen name="RewardsHistory" component={RewardsHistoryScreen} />

@@ -21,19 +21,36 @@ export type OnboardingStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Payments: undefined;
-  Card: undefined;
+  Offers: undefined;
   AI: undefined;
-  Profile: undefined;
+  Wallet: undefined;
+  History: undefined;
 };
 
 export type AIStackParamList = {
   AIChat: undefined;
 };
 
+export type OffersStackParamList = {
+  OffersHome: undefined;
+  ProfileMain: undefined;
+};
+
+export type WalletStackParamList = {
+  WalletHome: undefined;
+  ProfileMain: undefined;
+};
+
+export type HistoryStackParamList = {
+  HistoryHome: undefined;
+  ProfileMain: undefined;
+  TransactionDetail: { transactionId: string };
+};
+
 export type HomeStackParamList = {
   DashboardHome: undefined;
   NotificationsList: undefined;
+  ProfileMain: undefined;
   // Sub-features accessible from Home
   RewardsSummary: undefined;
   RewardsHistory: undefined;

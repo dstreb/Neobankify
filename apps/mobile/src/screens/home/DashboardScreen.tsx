@@ -1,16 +1,67 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
-import { Card } from '../../components/common/Card';
-import { TransactionItem } from '../../components/transactions/TransactionItem';
-import { formatCurrency, formatNumber } from '../../utils/formatters';
-import * as rewardsApi from '../../api/rewards';
-import * as transactionsApi from '../../api/transactions';
-import type { RewardsSummary, Transaction, Recommendation } from '../../types/models';
+import { formatCurrency } from '../../utils/formatters';
+
+// =====================================================
+// Mock data for demo - in production, fetched from APIs
+// =====================================================
+const MOCK_ACCOUNTS = [
+  { id: '1', name: 'Personal', type: 'Checking', lastFour: '8815', balance: 4522.25, icon: 'wallet-outline' as const },
+  { id: '2', name: 'Savings', type: 'Savings', lastFour: '1179', balance: 8458.22, icon: 'cash-outline' as const },
+  { id: '3', name: 'Credit', type: 'Credit', lastFour: '9718', balance: 1858.58, icon: 'card-outline' as const },
+];
+
+const MOCK_TRANSACTIONS = [
+  { id: '1', type: 'Transfer', description: 'To Jane Doe \u2022\u20222287', amount: -1250.00, icon: 'swap-horizontal-outline' as const },
+  { id: '2', type: 'Withdraw', description: 'From Savings \u2022\u20228813', amount: -52.25, icon: 'arrow-down-outline' as const },
+  { id: '3', type: 'Deposit', description: 'To Primary \u2022\u20228872', amount: 7.55, icon: 'arrow-up-outline' as const },
+  { id: '4', type: 'Convert', description: 'SGD \u2192 USD', amount: 10125.00, icon: 'repeat-outline' as const },
+];
+
+const MOCK_SAVINGS_POTS = [
+  { id: '1', name: 'Rainy Day', amount: 1250, total: 1250, timeLeft: '1y left' },
+  { id: '2', name: 'Home Renovation', amount: 250, total: 500, timeLeft: '1y left' },
+  { id: '3', name: 'Education', amount: 6800, total: 10000, timeLeft: '1y left' },
+  { id: '4', name: 'Dream Vacation', amount: 1200, total: 1200, timeLeft: '1y left' },
+];
+
+const MOCK_CARDS = [
+  { id: '1', name: 'swiftbank Platinum', type: 'Virtual', lastFour: '8812', balance: 1485.25 },
+  { id: '2', name: 'swiftbank Gold', type: 'Physical', lastFour: '8812', balance: 500.00 },
+];
+
+const MOCK_OFFERS = [
+  { id: '1', brand: "McDonald's", description: '10% Cashback your first order!', endsIn: '3d', color: '#DA291C' },
+  { id: '2', brand: 'Walmart', description: '25% Cashback your first order!', endsIn: '3d', color: '#0071CE' },
+];
+
+const MOCK_NEWS = [
+  { id: '1', title: 'What are homeowners association fees and what do they cover?', date: 'December 12, 2025', category: 'Stock Market' },
+  { id: '2', title: 'What are the fees and when do they apply?', date: 'December 12, 2025', category: 'Finance' },
+  { id: '3', title: 'How to maximize your savings with high-yield accounts', date: 'December 11, 2025', category: 'Savings' },
+];
+
+const WEEKLY_SPENDING = [
+  { day: 'Mon', income: 20, spending: 15 },
+  { day: 'Tue', income: 10, spending: 8 },
+  { day: 'Wed', income: 15, spending: 25 },
+  { day: 'Thu', income: 30, spending: 20 },
+  { day: 'Fri', income: 10, spending: 12 },
+  { day: 'Sat', income: 5, spending: 18 },
+  { day: 'Sun', income: 8, spending: 10 },
+];
 
 export function DashboardScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void } }) {
   const { theme } = useTheme();
@@ -19,277 +70,950 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
   const { featureFlags } = useTenant();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [rewardsSummary, setRewardsSummary] = useState<RewardsSummary | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [selectedAccount] = useState(MOCK_ACCOUNTS[0]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [summaryRes, txnsRes, recsRes] = await Promise.allSettled([
-        rewardsApi.getRewardsSummary(),
-        transactionsApi.getTransactions({ limit: 5 }),
-        rewardsApi.getRecommendations(),
-      ]);
-
-      if (summaryRes.status === 'fulfilled') setRewardsSummary(summaryRes.value.data);
-      if (txnsRes.status === 'fulfilled') setRecentTransactions(txnsRes.value.data);
-      if (recsRes.status === 'fulfilled') setRecommendations(recsRes.value.data.slice(0, 3));
-    } catch {
-      // Silently handle — dashboard is best-effort
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  };
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const greeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return 'Morning';
+    if (hour < 17) return 'Afternoon';
+    return 'Evening';
   };
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>{greeting()}</Text>
-            <Text style={[styles.userName, { color: colors.textPrimary }]}>
-              {user?.firstName || 'there'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.notifButton, { backgroundColor: colors.surface }]}
-            onPress={() => navigation.navigate('NotificationsList')}
-          >
-            <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+  const totalBalance = MOCK_ACCOUNTS.reduce((sum, acc) => sum + acc.balance, 0);
+
+  // =====================================================
+  // Dark Header - balance, account selector, quick actions
+  // =====================================================
+  const renderDarkHeader = () => (
+    <View style={[styles.darkHeader, { backgroundColor: '#0C1B2A' }]}>
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity
+          style={[styles.avatar, { backgroundColor: colors.primary }]}
+          onPress={() => navigation.navigate('ProfileMain')}
+        >
+          <Text style={styles.avatarText}>
+            {(user?.firstName?.[0] || 'J').toUpperCase()}
+          </Text>
+        </TouchableOpacity>
+        <View style={styles.headerGreeting}>
+          <Text style={styles.greetingText}>
+            {greeting()}, {user?.firstName || 'John'} {'\ud83d\udc4b'}
+          </Text>
         </View>
+        <TouchableOpacity
+          style={styles.headerBell}
+          onPress={() => navigation.navigate('NotificationsList')}
+        >
+          <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
 
-        {/* Rewards Overview Card */}
-        {featureFlags.rewardsEnabled && rewardsSummary && (
-          <Card elevated style={{ marginBottom: spacing.lg }}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>REWARDS OVERVIEW</Text>
-            <View style={styles.rewardsGrid}>
-              <View style={styles.rewardStat}>
-                <Text style={[styles.rewardValue, { color: colors.primary }]}>
-                  {formatNumber(rewardsSummary.totalPointsEarned)}
-                </Text>
-                <Text style={[styles.rewardLabel, { color: colors.textSecondary }]}>Points Earned</Text>
-              </View>
-              <View style={[styles.rewardDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.rewardStat}>
-                <Text style={[styles.rewardValue, { color: colors.success }]}>
-                  {formatCurrency(parseFloat(rewardsSummary.totalCashbackEarned))}
-                </Text>
-                <Text style={[styles.rewardLabel, { color: colors.textSecondary }]}>Cashback</Text>
-              </View>
-              <View style={[styles.rewardDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.rewardStat}>
-                <Text style={[styles.rewardValue, { color: colors.warning }]}>
-                  {formatCurrency(parseFloat(rewardsSummary.totalMissedValue))}
-                </Text>
-                <Text style={[styles.rewardLabel, { color: colors.textSecondary }]}>Missed Value</Text>
-              </View>
+      <TouchableOpacity style={styles.accountPill}>
+        <Ionicons name="briefcase-outline" size={14} color="#FFFFFF" />
+        <Text style={styles.accountPillText}>
+          {selectedAccount.name} \u2022\u2022{selectedAccount.lastFour}
+        </Text>
+        <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      <View style={styles.balanceRow}>
+        <Text style={styles.flagEmoji}>{'\ud83c\uddfa\ud83c\uddf8'}</Text>
+        <Text style={styles.balanceAmount}> {formatCurrency(totalBalance)}</Text>
+        <Ionicons name="trending-up" size={18} color="#10B981" style={{ marginLeft: 6 }} />
+      </View>
+
+      <Text style={styles.balanceSubtext}>
+        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}  ·  3.25% AER
+      </Text>
+
+      <View style={styles.quickActions}>
+        <TouchableOpacity style={styles.quickActionBtn}>
+          <View style={styles.quickActionIcon}>
+            <Ionicons name="arrow-down-outline" size={22} color="#FFFFFF" />
+          </View>
+          <Text style={styles.quickActionLabel}>Deposit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickActionBtn}>
+          <View style={styles.quickActionIcon}>
+            <Ionicons name="arrow-up-outline" size={22} color="#FFFFFF" />
+          </View>
+          <Text style={styles.quickActionLabel}>Withdraw</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickActionBtn}>
+          <View style={styles.quickActionIcon}>
+            <Ionicons name="swap-horizontal-outline" size={22} color="#FFFFFF" />
+          </View>
+          <Text style={styles.quickActionLabel}>Transfer</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // My Accounts
+  // =====================================================
+  const renderMyAccounts = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="wallet-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> My Accounts</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {MOCK_ACCOUNTS.map((account, index) => (
+          <TouchableOpacity
+            key={account.id}
+            style={[
+              styles.accountRow,
+              index < MOCK_ACCOUNTS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+            ]}
+          >
+            <View style={[styles.accountIcon, { backgroundColor: colors.brand10 }]}>
+              <Ionicons name={account.icon} size={20} color={colors.primary} />
             </View>
-          </Card>
+            <View style={styles.accountInfo}>
+              <Text style={[styles.accountName, { color: colors.textPrimary }]}>{account.name}</Text>
+              <Text style={[styles.accountType, { color: colors.textSecondary }]}>
+                {account.type} \u2022\u2022{account.lastFour}
+              </Text>
+            </View>
+            <View style={styles.accountBalanceRow}>
+              <Text style={[styles.accountBalance, { color: colors.textPrimary }]}>
+                {formatCurrency(account.balance)}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={styles.addRow}>
+          <Text style={[styles.addRowText, { color: colors.primary }]}>Add New Account</Text>
+          <Ionicons name="add" size={18} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // Latest Activity
+  // =====================================================
+  const renderLatestActivity = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="flash-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Latest Activity</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {MOCK_TRANSACTIONS.length > 0 ? (
+          MOCK_TRANSACTIONS.map((txn, index) => (
+            <TouchableOpacity
+              key={txn.id}
+              style={[
+                styles.txnRow,
+                index < MOCK_TRANSACTIONS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+              ]}
+              onPress={() => navigation.navigate('TransactionDetail', { transactionId: txn.id })}
+            >
+              <View style={[styles.txnIcon, { backgroundColor: colors.brand10 }]}>
+                <Ionicons name={txn.icon} size={20} color={colors.primary} />
+              </View>
+              <View style={styles.txnInfo}>
+                <Text style={[styles.txnType, { color: colors.textPrimary }]}>{txn.type}</Text>
+                <Text style={[styles.txnDesc, { color: colors.textSecondary }]}>{txn.description}</Text>
+              </View>
+              <Text style={[styles.txnAmount, { color: txn.amount >= 0 ? colors.success : colors.textPrimary }]}>
+                {txn.amount >= 0 ? '+' : ''}{formatCurrency(Math.abs(txn.amount))}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="receipt-outline" size={40} color={colors.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+              You have no transactions yet
+            </Text>
+            <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
+              Please make a transaction in order to see your latest activity
+            </Text>
+            <TouchableOpacity style={[styles.emptyButton, { borderColor: colors.primary }]}>
+              <Text style={[styles.emptyButtonText, { color: colors.primary }]}>Make Payment</Text>
+            </TouchableOpacity>
+          </View>
         )}
+      </View>
+    </View>
+  );
 
-        {/* AI Recommendations */}
-        {featureFlags.rewardsEnabled && recommendations.length > 0 && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>AI Recommendations</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('RewardsSummary')}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-              </TouchableOpacity>
+  // =====================================================
+  // Monthly Insight - spending bar chart
+  // =====================================================
+  const renderMonthlyInsight = () => {
+    const maxVal = Math.max(...WEEKLY_SPENDING.map((d) => Math.max(d.income, d.spending)));
+    const barMaxHeight = 60;
+
+    return (
+      <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="pie-chart-outline" size={18} color={colors.textPrimary} />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Monthly Insight</Text>
+          </View>
+        </View>
+        <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.insightHeader}>
+            <View>
+              <Text style={[styles.insightAmount, { color: colors.textPrimary }]}>$182.22</Text>
+              <Text style={[styles.insightLabel, { color: colors.textSecondary }]}>Spent on August</Text>
             </View>
-            {recommendations.map((rec) => (
-              <TouchableOpacity
-                key={rec.id}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('RecommendationDetail', { recommendationId: rec.id })}
-              >
-                <Card style={{ marginBottom: spacing.sm }}>
-                  <View style={styles.recRow}>
-                    <View style={[styles.recIcon, { backgroundColor: colors.primaryLight + '15' }]}>
-                      <Ionicons name="bulb-outline" size={20} color={colors.primary} />
-                    </View>
-                    <View style={styles.recText}>
-                      <Text style={[styles.recTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-                        {rec.decisionType.replace(/_/g, ' ')}
-                      </Text>
-                      <Text style={[styles.recDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                        {rec.reasoning}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-                  </View>
-                </Card>
-              </TouchableOpacity>
+            <TouchableOpacity style={styles.insightMonthPicker}>
+              <Text style={[styles.insightMonthText, { color: colors.textSecondary }]}>Aug 2026</Text>
+              <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.chartContainer}>
+            {WEEKLY_SPENDING.map((day) => (
+              <View key={day.day} style={styles.chartBar}>
+                <View style={styles.barGroup}>
+                  <View
+                    style={[
+                      styles.bar,
+                      { height: (day.income / maxVal) * barMaxHeight, backgroundColor: colors.primary },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.bar,
+                      { height: (day.spending / maxVal) * barMaxHeight, backgroundColor: '#F59E0B' },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.chartLabel, { color: colors.textTertiary }]}>{day.day}</Text>
+              </View>
             ))}
           </View>
-        )}
-
-        {/* Wealth Section — Investing, Trading, Lending */}
-        {(featureFlags.investingEnabled || featureFlags.tradingEnabled || featureFlags.lendingEnabled) && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: spacing.sm }]}>Wealth</Text>
-            <View style={styles.wealthGrid}>
-              {featureFlags.investingEnabled && (
-                <TouchableOpacity
-                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => navigation.navigate('InvestingDashboard')}
-                >
-                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                    <Ionicons name="trending-up" size={22} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Investing</Text>
-                </TouchableOpacity>
-              )}
-              {featureFlags.tradingEnabled && (
-                <TouchableOpacity
-                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => navigation.navigate('TradingDashboard')}
-                >
-                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                    <Ionicons name="bar-chart" size={22} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Trading</Text>
-                </TouchableOpacity>
-              )}
-              {featureFlags.lendingEnabled && (
-                <TouchableOpacity
-                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => navigation.navigate('LendingDashboard')}
-                >
-                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                    <Ionicons name="cash" size={22} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Lending</Text>
-                </TouchableOpacity>
-              )}
+          <View style={styles.chartLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>Income</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>Spending</Text>
             </View>
           </View>
-        )}
-
-        {/* Recent Transactions */}
-        <View>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
-          </View>
-          <Card padding="none">
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((txn, i) => (
-                <React.Fragment key={txn.id}>
-                  <TransactionItem
-                    transaction={txn}
-                    onPress={() => navigation.navigate('TransactionDetail', { transactionId: txn.id })}
-                  />
-                  {i < recentTransactions.length - 1 && (
-                    <View style={[styles.txnDivider, { backgroundColor: colors.borderLight }]} />
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <View style={styles.emptyTxn}>
-                <Ionicons name="receipt-outline" size={32} color={colors.textTertiary} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  No transactions yet
-                </Text>
-              </View>
-            )}
-          </Card>
         </View>
+      </View>
+    );
+  };
+
+  // =====================================================
+  // Wealth Section - feature-flagged
+  // =====================================================
+  const renderWealthSection = () => {
+    if (!featureFlags.investingEnabled && !featureFlags.tradingEnabled && !featureFlags.lendingEnabled) {
+      return null;
+    }
+    return (
+      <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="trending-up" size={18} color={colors.textPrimary} />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Wealth</Text>
+          </View>
+        </View>
+        <View style={styles.wealthGrid}>
+          {featureFlags.investingEnabled && (
+            <TouchableOpacity
+              style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('InvestingDashboard')}
+            >
+              <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                <Ionicons name="trending-up" size={22} color={colors.primary} />
+              </View>
+              <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Investing</Text>
+            </TouchableOpacity>
+          )}
+          {featureFlags.tradingEnabled && (
+            <TouchableOpacity
+              style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('TradingDashboard')}
+            >
+              <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                <Ionicons name="bar-chart" size={22} color={colors.primary} />
+              </View>
+              <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Trading</Text>
+            </TouchableOpacity>
+          )}
+          {featureFlags.lendingEnabled && (
+            <TouchableOpacity
+              style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation.navigate('LendingDashboard')}
+            >
+              <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                <Ionicons name="cash" size={22} color={colors.primary} />
+              </View>
+              <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Lending</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  // =====================================================
+  // Savings Pots
+  // =====================================================
+  const renderSavingsPots = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="bag-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Savings Pots</Text>
+        </View>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.potsHeader}>
+          <View>
+            <Text style={[styles.potsTotalAmount, { color: colors.textPrimary }]}>
+              {formatCurrency(MOCK_SAVINGS_POTS.reduce((sum, p) => sum + p.amount, 0))}
+            </Text>
+            <Text style={[styles.potsTotalLabel, { color: colors.textSecondary }]}>Total Saving Pot</Text>
+          </View>
+          <TouchableOpacity style={[styles.addPotButton, { backgroundColor: colors.brand10 }]}>
+            <Ionicons name="add" size={22} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.potsGrid}>
+          {MOCK_SAVINGS_POTS.map((pot) => {
+            const progress = pot.amount / pot.total;
+            return (
+              <TouchableOpacity
+                key={pot.id}
+                style={[styles.potCard, { backgroundColor: colors.background, borderColor: colors.borderLight }]}
+              >
+                <Text style={[styles.potAmount, { color: colors.textPrimary }]}>
+                  {formatCurrency(pot.amount)}
+                </Text>
+                <Text style={[styles.potName, { color: colors.textSecondary }]}>{pot.name}</Text>
+                <View style={[styles.progressBar, { backgroundColor: colors.borderLight }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${Math.min(progress * 100, 100)}%`, backgroundColor: colors.primary },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.potMeta, { color: colors.textTertiary }]}>
+                  {formatCurrency(pot.total)} Total  ·  {pot.timeLeft}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // Exchange Rate
+  // =====================================================
+  const renderExchangeRate = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="swap-horizontal-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Exchange Rate</Text>
+        </View>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.exchangeHeader}>
+          <Text style={[styles.exchangeLabel, { color: colors.textSecondary }]}>1 SGD is equal to</Text>
+        </View>
+        <View style={styles.exchangeRateRow}>
+          <Text style={styles.flagEmoji}>{'\ud83c\uddf8\ud83c\uddec'}</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.textTertiary} style={{ marginHorizontal: 8 }} />
+          <Text style={[styles.exchangeRateValue, { color: colors.textPrimary }]}>0.61218 USD</Text>
+          <TouchableOpacity style={{ marginLeft: 'auto' }}>
+            <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.exchangeDate, { color: colors.textTertiary }]}>
+          Fri, May 25 2025 at 12:02 AM
+        </Text>
+        <View style={[styles.exchangeChart, { borderTopColor: colors.borderLight }]}>
+          <View style={styles.exchangeDays}>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+              <Text key={day} style={[styles.exchangeDayLabel, { color: colors.textTertiary }]}>{day}</Text>
+            ))}
+          </View>
+        </View>
+        <View style={styles.timeFilters}>
+          {['1d', '1w', '1m', '1y', 'All'].map((tf) => (
+            <TouchableOpacity
+              key={tf}
+              style={[styles.timeFilter, tf === '1d' && { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.timeFilterText, { color: tf === '1d' ? '#FFFFFF' : colors.textSecondary }]}>
+                {tf}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // My Card
+  // =====================================================
+  const renderMyCard = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="card-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> My Card</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {MOCK_CARDS.map((cardItem, index) => (
+          <TouchableOpacity
+            key={cardItem.id}
+            style={[
+              styles.cardItemRow,
+              index < MOCK_CARDS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+            ]}
+          >
+            <View style={[styles.cardItemIcon, { backgroundColor: cardItem.id === '1' ? '#1E293B' : '#D97706' }]}>
+              <Ionicons name="card" size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.cardItemInfo}>
+              <Text style={[styles.cardItemName, { color: colors.textPrimary }]}>{cardItem.name}</Text>
+              <Text style={[styles.cardItemType, { color: colors.textSecondary }]}>
+                {cardItem.type} \u2022\u2022{cardItem.lastFour}
+              </Text>
+            </View>
+            <Text style={[styles.cardItemBalance, { color: colors.textPrimary }]}>
+              {formatCurrency(cardItem.balance)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={styles.addRow}>
+          <Text style={[styles.addRowText, { color: colors.primary }]}>Add New Card</Text>
+          <Ionicons name="add" size={18} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // Offers & Promo
+  // =====================================================
+  const renderOffersPromo = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="pricetag-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> Offers & Promo</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.cardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {MOCK_OFFERS.map((offer, index) => (
+          <View
+            key={offer.id}
+            style={[
+              styles.offerRow,
+              index < MOCK_OFFERS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+            ]}
+          >
+            <View style={[styles.offerBrandIcon, { backgroundColor: offer.color + '15' }]}>
+              <Text style={[styles.offerBrandLetter, { color: offer.color }]}>
+                {offer.brand[0]}
+              </Text>
+            </View>
+            <View style={styles.offerInfo}>
+              <View style={styles.offerTitleRow}>
+                <Text style={[styles.offerBrand, { color: colors.textPrimary }]}>{offer.brand}</Text>
+                <View style={[styles.offerBadge, { backgroundColor: colors.errorLight }]}>
+                  <Ionicons name="time-outline" size={10} color={colors.error} />
+                  <Text style={[styles.offerBadgeText, { color: colors.error }]}> Ends in {offer.endsIn}</Text>
+                </View>
+              </View>
+              <Text style={[styles.offerDesc, { color: colors.textSecondary }]}>
+                {offer.description} {'\ud83c\udf81'}
+              </Text>
+              <TouchableOpacity style={styles.activateRow}>
+                <Text style={[styles.activateText, { color: colors.primary }]}>Activate Offer</Text>
+                <Ionicons name="add" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  // =====================================================
+  // News & Resources - horizontal scroll
+  // =====================================================
+  const renderNewsResources = () => (
+    <View style={[styles.section, { paddingHorizontal: spacing.md }]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="newspaper-outline" size={18} color={colors.textPrimary} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}> News & Resources</Text>
+        </View>
+        <TouchableOpacity>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {MOCK_NEWS.map((news) => (
+          <TouchableOpacity
+            key={news.id}
+            style={[styles.newsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <View style={[styles.newsImagePlaceholder, { backgroundColor: colors.brand10 }]}>
+              <Ionicons name="image-outline" size={32} color={colors.primary} />
+            </View>
+            <View style={styles.newsContent}>
+              <Text style={[styles.newsDate, { color: colors.textTertiary }]}>{news.date}</Text>
+              <Text style={[styles.newsTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+                {news.title}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  // =====================================================
+  // Main Render
+  // =====================================================
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: '#0C1B2A' }]} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderDarkHeader()}
+        {renderMyAccounts()}
+        {renderLatestActivity()}
+        {renderMonthlyInsight()}
+        {renderWealthSection()}
+        {renderSavingsPots()}
+        {renderExchangeRate()}
+        {renderMyCard()}
+        {renderOffersPromo()}
+        {renderNewsResources()}
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// =====================================================
+// Styles
+// =====================================================
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 32 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+  scrollContent: { paddingBottom: 32 },
+
+  // === Dark Header ===
+  darkHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  greeting: { fontSize: 14, fontWeight: '500' },
-  userName: { fontSize: 28, fontWeight: '700', marginTop: 2 },
-  notifButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionLabel: {
-    fontSize: 11,
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 16,
   },
-  rewardsGrid: {
+  headerGreeting: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  greetingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerBell: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  accountPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 16,
+    gap: 6,
   },
-  rewardStat: {
-    flex: 1,
+  accountPillText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  balanceRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  rewardValue: {
-    fontSize: 20,
+  flagEmoji: { fontSize: 20 },
+  balanceAmount: {
+    color: '#FFFFFF',
+    fontSize: 32,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  rewardLabel: { fontSize: 12, marginTop: 4 },
-  rewardDivider: { width: 1, height: 40 },
+  balanceSubtext: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+  },
+  quickActionBtn: { alignItems: 'center' },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 6,
+  },
+  quickActionLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // === Sections ===
+  section: { marginTop: 24 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '600' },
-  seeAll: { fontSize: 14, fontWeight: '600' },
-  recRow: {
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  recIcon: {
+  sectionTitle: { fontSize: 16, fontWeight: '700' },
+  seeAll: { fontSize: 13, fontWeight: '600' },
+
+  // === Card container ===
+  cardContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+
+  // === My Accounts ===
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountInfo: { flex: 1, marginLeft: 12 },
+  accountName: { fontSize: 15, fontWeight: '600' },
+  accountType: { fontSize: 13, marginTop: 1 },
+  accountBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  accountBalance: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 4,
+  },
+  addRowText: { fontSize: 14, fontWeight: '600' },
+
+  // === Latest Activity ===
+  txnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  txnIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  txnInfo: { flex: 1, marginLeft: 12 },
+  txnType: { fontSize: 15, fontWeight: '600' },
+  txnDesc: { fontSize: 13, marginTop: 1 },
+  txnAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: '600', marginTop: 12 },
+  emptyDesc: { fontSize: 14, textAlign: 'center', marginTop: 4, lineHeight: 20 },
+  emptyButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1.5,
+  },
+  emptyButtonText: { fontSize: 14, fontWeight: '600' },
+
+  // === Monthly Insight ===
+  insightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 16,
+    paddingBottom: 8,
+  },
+  insightAmount: { fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  insightLabel: { fontSize: 13, marginTop: 2 },
+  insightMonthPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  insightMonthText: { fontSize: 13, fontWeight: '500' },
+  chartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 100,
+  },
+  chartBar: { alignItems: 'center', flex: 1 },
+  barGroup: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  bar: { width: 8, borderRadius: 4, minHeight: 4 },
+  chartLabel: { fontSize: 11, marginTop: 6 },
+  chartLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingBottom: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 12 },
+
+  // === Savings Pots ===
+  potsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  potsTotalAmount: { fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  potsTotalLabel: { fontSize: 13, marginTop: 2 },
+  addPotButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  potsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  potCard: {
+    width: '47%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  potAmount: { fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  potName: { fontSize: 13, marginTop: 2, marginBottom: 8 },
+  progressBar: { height: 4, borderRadius: 2, marginBottom: 6 },
+  progressFill: { height: 4, borderRadius: 2 },
+  potMeta: { fontSize: 11 },
+
+  // === Exchange Rate ===
+  exchangeHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  exchangeLabel: { fontSize: 13 },
+  exchangeRateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  exchangeRateValue: { fontSize: 20, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  exchangeDate: { fontSize: 12, paddingHorizontal: 16, paddingBottom: 12 },
+  exchangeChart: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1 },
+  exchangeDays: { flexDirection: 'row', justifyContent: 'space-between' },
+  exchangeDayLabel: { fontSize: 11 },
+  timeFilters: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  timeFilter: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16 },
+  timeFilterText: { fontSize: 12, fontWeight: '600' },
+
+  // === My Card ===
+  cardItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  cardItemIcon: {
+    width: 36,
+    height: 24,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardItemInfo: { flex: 1, marginLeft: 12 },
+  cardItemName: { fontSize: 14, fontWeight: '600' },
+  cardItemType: { fontSize: 12, marginTop: 1 },
+  cardItemBalance: { fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
+
+  // === Offers ===
+  offerRow: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  offerBrandIcon: {
     width: 40,
     height: 40,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recText: { flex: 1, marginLeft: 12, marginRight: 8 },
-  recTitle: { fontSize: 14, fontWeight: '600', textTransform: 'capitalize' },
-  recDesc: { fontSize: 13, marginTop: 2, lineHeight: 18 },
-  txnDivider: { height: 1, marginLeft: 72 },
-  emptyTxn: {
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyText: { fontSize: 14, marginTop: 8 },
-  wealthGrid: {
+  offerBrandLetter: { fontSize: 20, fontWeight: '700' },
+  offerInfo: { flex: 1, marginLeft: 12 },
+  offerTitleRow: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 8,
   },
+  offerBrand: { fontSize: 15, fontWeight: '600' },
+  offerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  offerBadgeText: { fontSize: 11, fontWeight: '500' },
+  offerDesc: { fontSize: 13, marginTop: 2 },
+  activateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 4,
+  },
+  activateText: { fontSize: 13, fontWeight: '600' },
+
+  // === News & Resources ===
+  newsCard: {
+    width: 200,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  newsImagePlaceholder: {
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newsContent: { padding: 10 },
+  newsDate: { fontSize: 11 },
+  newsTitle: { fontSize: 13, fontWeight: '600', marginTop: 4, lineHeight: 18 },
+
+  // === Wealth Section ===
+  wealthGrid: { flexDirection: 'row', gap: 12 },
   wealthCard: {
     flex: 1,
     alignItems: 'center',
@@ -306,8 +1030,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  wealthLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  wealthLabel: { fontSize: 14, fontWeight: '600' },
 });
