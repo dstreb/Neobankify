@@ -21,6 +21,13 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: 'link-outline', label: 'Linked Accounts', screen: 'LinkedAccounts' },
 ];
 
+const WEALTH_ITEMS: MenuItem[] = [
+  { icon: 'gift-outline', label: 'Rewards', screen: 'RewardsSummary' },
+  { icon: 'trending-up-outline', label: 'Investing', screen: 'InvestingDashboard' },
+  { icon: 'bar-chart-outline', label: 'Trading', screen: 'TradingDashboard' },
+  { icon: 'cash-outline', label: 'Lending', screen: 'LendingDashboard' },
+];
+
 export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>) {
   const { theme, isDark, toggleTheme } = useTheme();
   const { colors, spacing } = theme;
@@ -101,6 +108,29 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
                 </View>
               </TouchableOpacity>
               {index < MENU_ITEMS.length - 1 && (
+                <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
+              )}
+            </React.Fragment>
+          ))}
+        </Card>
+
+        {/* Wealth & Features */}
+        <Card style={{ marginBottom: spacing.lg }} padding="none">
+          {WEALTH_ITEMS.map((item, index) => (
+            <React.Fragment key={item.screen}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate(item.screen as never)}
+              >
+                <View style={styles.menuLeft}>
+                  <Ionicons name={item.icon} size={22} color={colors.primary} />
+                  <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
+                </View>
+                <View style={styles.menuRight}>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+              {index < WEALTH_ITEMS.length - 1 && (
                 <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
               )}
             </React.Fragment>

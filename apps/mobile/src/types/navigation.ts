@@ -20,14 +20,10 @@ export type OnboardingStackParamList = {
 };
 
 export type MainTabParamList = {
-  Dashboard: undefined;
-  Cards: undefined;
+  Home: undefined;
+  Payments: undefined;
+  Card: undefined;
   AI: undefined;
-  Rewards: undefined;
-  Investing: undefined;
-  Trading: undefined;
-  Lending: undefined;
-  Transactions: undefined;
   Profile: undefined;
 };
 
@@ -38,6 +34,30 @@ export type AIStackParamList = {
 export type HomeStackParamList = {
   DashboardHome: undefined;
   NotificationsList: undefined;
+  // Sub-features accessible from Home
+  RewardsSummary: undefined;
+  RewardsHistory: undefined;
+  OffersList: undefined;
+  RecommendationDetail: { recommendationId: string };
+  InvestingDashboard: undefined;
+  SuitabilityAssessment: undefined;
+  HoldingDetail: { holdingId: string };
+  InvestingOrder: { side?: string };
+  InvestingSettings: undefined;
+  TradingDashboard: undefined;
+  TradeOrder: { side?: string };
+  PositionDetail: { positionId: string };
+  AISignals: undefined;
+  PaperTrading: undefined;
+  LendingDashboard: undefined;
+  LoanApplication: undefined;
+  LoanDetail: { loanId: string };
+  MakePayment: { loanId?: string };
+};
+
+export type PaymentsStackParamList = {
+  TransactionList: undefined;
+  TransactionDetail: { transactionId: string };
 };
 
 export type CardsStackParamList = {
@@ -63,6 +83,14 @@ export type ProfileStackParamList = {
   Security: undefined;
   Notifications: undefined;
   LinkedAccounts: undefined;
+  // Sub-features accessible from Profile
+  RewardsSummary: undefined;
+  RewardsHistory: undefined;
+  OffersList: undefined;
+  RecommendationDetail: { recommendationId: string };
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
 };
 
 export type InvestingStackParamList = {

@@ -113,7 +113,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
           <View style={{ marginBottom: spacing.lg }}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>AI Recommendations</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Rewards')}>
+              <TouchableOpacity onPress={() => navigation.navigate('RewardsSummary')}>
                 <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
               </TouchableOpacity>
             </View>
@@ -121,7 +121,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
               <TouchableOpacity
                 key={rec.id}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('Rewards', { screen: 'RecommendationDetail', params: { recommendationId: rec.id } })}
+                onPress={() => navigation.navigate('RecommendationDetail', { recommendationId: rec.id })}
               >
                 <Card style={{ marginBottom: spacing.sm }}>
                   <View style={styles.recRow}>
@@ -144,11 +144,51 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
           </View>
         )}
 
+        {/* Wealth Section — Investing, Trading, Lending */}
+        <View style={{ marginBottom: spacing.lg }}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: spacing.sm }]}>Wealth</Text>
+          <View style={styles.wealthGrid}>
+            {featureFlags.investingEnabled && (
+              <TouchableOpacity
+                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('InvestingDashboard')}
+              >
+                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                  <Ionicons name="trending-up" size={22} color={colors.primary} />
+                </View>
+                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Investing</Text>
+              </TouchableOpacity>
+            )}
+            {featureFlags.tradingEnabled && (
+              <TouchableOpacity
+                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('TradingDashboard')}
+              >
+                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                  <Ionicons name="bar-chart" size={22} color={colors.primary} />
+                </View>
+                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Trading</Text>
+              </TouchableOpacity>
+            )}
+            {featureFlags.lendingEnabled && (
+              <TouchableOpacity
+                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('LendingDashboard')}
+              >
+                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                  <Ionicons name="cash" size={22} color={colors.primary} />
+                </View>
+                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Lending</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Recent Transactions */}
         <View>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+            <TouchableOpacity onPress={() => navigation.navigate('RewardsSummary')}>
               <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
             </TouchableOpacity>
           </View>
@@ -158,7 +198,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
                 <React.Fragment key={txn.id}>
                   <TransactionItem
                     transaction={txn}
-                    onPress={() => navigation.navigate('Transactions', { screen: 'TransactionDetail', params: { transactionId: txn.id } })}
+                    onPress={() => navigation.navigate('RewardsSummary')}
                   />
                   {i < recentTransactions.length - 1 && (
                     <View style={[styles.txnDivider, { backgroundColor: colors.borderLight }]} />
@@ -247,4 +287,28 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyText: { fontSize: 14, marginTop: 8 },
+  wealthGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  wealthCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  wealthIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  wealthLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
