@@ -35,7 +35,7 @@ export function HistoryScreen({ navigation }: { navigation: { navigate: (screen:
     if (selectedFilter === 'All') return group;
     const filtered = group.transactions.filter((txn) => {
       switch (selectedFilter) {
-        case 'Income': return txn.amount >= 0;
+        case 'Income': return txn.amount >= 0 && txn.type !== 'Transfer';
         case 'Expenses': return txn.amount < 0 && txn.type !== 'Transfer';
         case 'Transfers': return txn.type === 'Transfer';
         default: return true;

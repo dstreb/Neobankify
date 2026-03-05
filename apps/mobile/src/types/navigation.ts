@@ -34,23 +34,54 @@ export type AIStackParamList = {
 export type OffersStackParamList = {
   OffersHome: undefined;
   ProfileMain: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
 };
 
 export type WalletStackParamList = {
   WalletHome: undefined;
   ProfileMain: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
 };
 
 export type HistoryStackParamList = {
   HistoryHome: undefined;
   ProfileMain: undefined;
   TransactionDetail: { transactionId: string };
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
 };
 
 export type HomeStackParamList = {
   DashboardHome: undefined;
   NotificationsList: undefined;
   ProfileMain: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
   // Sub-features accessible from Home
   RewardsSummary: undefined;
   RewardsHistory: undefined;

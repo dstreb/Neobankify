@@ -29,6 +29,10 @@ import { MakePaymentScreen } from '../screens/lending/MakePaymentScreen';
 import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
 // Profile (accessible from avatar)
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+// Profile sub-screens
+import { SecurityScreen } from '../screens/profile/SecurityScreen';
+import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
+import { LinkedAccountsScreen } from '../screens/profile/LinkedAccountsScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -38,6 +42,10 @@ export function HomeNavigator() {
       <Stack.Screen name="DashboardHome" component={DashboardScreen} />
       <Stack.Screen name="NotificationsList" component={NotificationsListScreen} />
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      {/* Profile sub-screens */}
+      <Stack.Screen name="Security" component={SecurityScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="LinkedAccounts" component={LinkedAccountsScreen} />
       {/* Rewards */}
       <Stack.Screen name="RewardsSummary" component={RewardsSummaryScreen} />
       <Stack.Screen name="RewardsHistory" component={RewardsHistoryScreen} />

@@ -91,7 +91,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
     return 'Evening';
   };
 
-  const totalBalance = MOCK_ACCOUNTS.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalBalance = MOCK_ACCOUNTS.reduce((sum, acc) => acc.type === 'Credit' ? sum - acc.balance : sum + acc.balance, 0);
 
   // =====================================================
   // Dark Header - balance, account selector, quick actions
