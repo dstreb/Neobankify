@@ -145,44 +145,46 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         )}
 
         {/* Wealth Section — Investing, Trading, Lending */}
-        <View style={{ marginBottom: spacing.lg }}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: spacing.sm }]}>Wealth</Text>
-          <View style={styles.wealthGrid}>
-            {featureFlags.investingEnabled && (
-              <TouchableOpacity
-                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('InvestingDashboard')}
-              >
-                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                  <Ionicons name="trending-up" size={22} color={colors.primary} />
-                </View>
-                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Investing</Text>
-              </TouchableOpacity>
-            )}
-            {featureFlags.tradingEnabled && (
-              <TouchableOpacity
-                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('TradingDashboard')}
-              >
-                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                  <Ionicons name="bar-chart" size={22} color={colors.primary} />
-                </View>
-                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Trading</Text>
-              </TouchableOpacity>
-            )}
-            {featureFlags.lendingEnabled && (
-              <TouchableOpacity
-                style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('LendingDashboard')}
-              >
-                <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
-                  <Ionicons name="cash" size={22} color={colors.primary} />
-                </View>
-                <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Lending</Text>
-              </TouchableOpacity>
-            )}
+        {(featureFlags.investingEnabled || featureFlags.tradingEnabled || featureFlags.lendingEnabled) && (
+          <View style={{ marginBottom: spacing.lg }}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: spacing.sm }]}>Wealth</Text>
+            <View style={styles.wealthGrid}>
+              {featureFlags.investingEnabled && (
+                <TouchableOpacity
+                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('InvestingDashboard')}
+                >
+                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                    <Ionicons name="trending-up" size={22} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Investing</Text>
+                </TouchableOpacity>
+              )}
+              {featureFlags.tradingEnabled && (
+                <TouchableOpacity
+                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('TradingDashboard')}
+                >
+                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                    <Ionicons name="bar-chart" size={22} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Trading</Text>
+                </TouchableOpacity>
+              )}
+              {featureFlags.lendingEnabled && (
+                <TouchableOpacity
+                  style={[styles.wealthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('LendingDashboard')}
+                >
+                  <View style={[styles.wealthIcon, { backgroundColor: colors.brand10 }]}>
+                    <Ionicons name="cash" size={22} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.wealthLabel, { color: colors.textPrimary }]}>Lending</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Recent Transactions */}
         <View>

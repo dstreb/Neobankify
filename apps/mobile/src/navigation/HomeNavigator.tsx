@@ -25,6 +25,8 @@ import { LendingDashboardScreen } from '../screens/lending/LendingDashboardScree
 import { LoanApplicationScreen } from '../screens/lending/LoanApplicationScreen';
 import { LoanDetailScreen } from '../screens/lending/LoanDetailScreen';
 import { MakePaymentScreen } from '../screens/lending/MakePaymentScreen';
+// Transaction detail (accessible from dashboard)
+import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -55,6 +57,8 @@ export function HomeNavigator() {
       <Stack.Screen name="LoanApplication" component={LoanApplicationScreen} />
       <Stack.Screen name="LoanDetail" component={LoanDetailScreen} />
       <Stack.Screen name="MakePayment" component={MakePaymentScreen} />
+      {/* Transaction detail accessible from dashboard */}
+      <Stack.Screen name="TransactionDetail" component={TransactionDetailScreen} />
     </Stack.Navigator>
   );
 }

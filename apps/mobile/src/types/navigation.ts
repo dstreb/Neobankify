@@ -53,6 +53,8 @@ export type HomeStackParamList = {
   LoanApplication: undefined;
   LoanDetail: { loanId: string };
   MakePayment: { loanId?: string };
+  // Transaction detail accessible from dashboard
+  TransactionDetail: { transactionId: string };
 };
 
 export type PaymentsStackParamList = {
