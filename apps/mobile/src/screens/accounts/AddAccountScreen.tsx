@@ -157,6 +157,7 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState<BankEntry | null>(null);
   const [cryptoApiKey, setCryptoApiKey] = useState('');
+  const [cryptoApiSecret, setCryptoApiSecret] = useState('');
   const [scannedCard, setScannedCard] = useState<{ lastFour: string; brand: string; expiry: string } | null>(null);
 
   // Filter banks by search query
@@ -837,6 +838,7 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
           onPress={() => {
             setSelectedCrypto(platform);
             setCryptoApiKey('');
+            setCryptoApiSecret('');
             setStep('crypto_connect');
           }}
         >
@@ -856,6 +858,7 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
           onPress={() => {
             setSelectedCrypto(platform);
             setCryptoApiKey('');
+            setCryptoApiSecret('');
             setStep('crypto_connect');
           }}
         >
@@ -910,6 +913,8 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
                 style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
                 placeholder="Paste your API secret"
                 placeholderTextColor={colors.textTertiary}
+                value={cryptoApiSecret}
+                onChangeText={setCryptoApiSecret}
                 secureTextEntry
               />
             </>
@@ -928,9 +933,9 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
             style={[
               styles.primaryButton,
               { backgroundColor: '#F59E0B' },
-              (!cryptoApiKey.trim() || isProcessing) && { opacity: 0.5 },
+              (!cryptoApiKey.trim() || (!isWallet && !cryptoApiSecret.trim()) || isProcessing) && { opacity: 0.5 },
             ]}
-            disabled={!cryptoApiKey.trim() || isProcessing}
+            disabled={!cryptoApiKey.trim() || (!isWallet && !cryptoApiSecret.trim()) || isProcessing}
             onPress={() => {
               setIsProcessing(true);
               setTimeout(() => {
@@ -983,6 +988,7 @@ export function AddAccountScreen({ navigation }: { navigation: { goBack: () => v
           setLinkUsername('');
           setLinkPassword('');
           setCryptoApiKey('');
+          setCryptoApiSecret('');
           setDiscoveredAccounts([]);
           setOpenAccountName('');
           setScannedCard(null);
