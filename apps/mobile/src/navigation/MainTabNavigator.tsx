@@ -43,16 +43,16 @@ export function MainTabNavigator() {
           backgroundColor: colors.tabBackground,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 90,
+          paddingBottom: 6,
+          paddingTop: 6,
+          height: 70,
         },
         tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
           fontFamily: 'Inter',
-          marginTop: 4,
+          marginTop: -2,
         },
       })}
     >
