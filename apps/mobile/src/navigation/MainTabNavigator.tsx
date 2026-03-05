@@ -47,14 +47,12 @@ export function MainTabNavigator() {
           paddingTop: 8,
           height: 90,
         },
+        tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
           fontFamily: 'Inter',
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginBottom: -4,
+          marginTop: 4,
         },
       })}
     >
