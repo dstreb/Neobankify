@@ -48,9 +48,13 @@ export function MainTabNavigator() {
           height: 90,
         },
         tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: '700',
+          fontSize: 11,
+          fontWeight: '600',
           fontFamily: 'Inter',
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: -4,
         },
       })}
     >

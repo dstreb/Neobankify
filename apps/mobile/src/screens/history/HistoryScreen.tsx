@@ -30,6 +30,20 @@ export function HistoryScreen({ navigation }: { navigation: { navigate: (screen:
   const { user } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState('All');
 
+  // Filter transactions based on selected filter
+  const filteredHistory = MOCK_HISTORY.map((group) => {
+    if (selectedFilter === 'All') return group;
+    const filtered = group.transactions.filter((txn) => {
+      switch (selectedFilter) {
+        case 'Income': return txn.amount >= 0;
+        case 'Expenses': return txn.amount < 0 && txn.type !== 'Transfer';
+        case 'Transfers': return txn.type === 'Transfer';
+        default: return true;
+      }
+    });
+    return { ...group, transactions: filtered };
+  }).filter((group) => group.transactions.length > 0);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with profile avatar */}
@@ -75,7 +89,7 @@ export function HistoryScreen({ navigation }: { navigation: { navigate: (screen:
 
       {/* Transaction groups */}
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
-        {MOCK_HISTORY.map((group) => (
+        {filteredHistory.map((group) => (
           <View key={group.id} style={[styles.groupSection, { paddingHorizontal: spacing.md }]}>
             <Text style={[styles.groupDate, { color: colors.textSecondary }]}>{group.date}</Text>
             <View style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>

@@ -54,7 +54,7 @@ export function WalletScreen({ navigation }: { navigation: { navigate: (screen: 
                 <Text style={styles.cardName}>{card.name}</Text>
                 <Ionicons name="card" size={24} color="rgba(255,255,255,0.6)" />
               </View>
-              <Text style={styles.cardNumber}>\u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  {card.lastFour}</Text>
+              <Text style={styles.cardNumber}>{'\u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  \u2022\u2022\u2022\u2022  '}{card.lastFour}</Text>
               <View style={styles.cardBottomRow}>
                 <Text style={styles.cardType}>{card.type}</Text>
                 <Text style={styles.cardBalance}>{formatCurrency(card.balance)}</Text>
@@ -83,7 +83,7 @@ export function WalletScreen({ navigation }: { navigation: { navigate: (screen: 
                 <View style={styles.accountInfo}>
                   <Text style={[styles.accountName, { color: colors.textPrimary }]}>{account.name}</Text>
                   <Text style={[styles.accountType, { color: colors.textSecondary }]}>
-                    {account.type} \u2022\u2022{account.lastFour}
+                    {account.type} {'\u2022\u2022'}{account.lastFour}
                   </Text>
                 </View>
                 <Text style={[styles.accountBalance, { color: colors.textPrimary }]}>

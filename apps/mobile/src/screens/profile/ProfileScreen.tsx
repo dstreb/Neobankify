@@ -33,7 +33,7 @@ const ALL_WEALTH_ITEMS: WealthItem[] = [
   { icon: 'cash-outline', label: 'Lending', screen: 'LendingDashboard', flag: 'lendingEnabled' },
 ];
 
-export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>) {
+export function ProfileScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void; goBack: () => void } }) {
   const { theme, isDark, toggleTheme } = useTheme();
   const { colors, spacing } = theme;
   const { user, logout } = useAuth();
@@ -51,6 +51,18 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Back button header */}
+      <View style={[styles.backHeader, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.backHeaderTitle, { color: colors.textPrimary }]}>Profile</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Info */}
         <View style={styles.userSection}>
@@ -165,6 +177,24 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  backHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
   content: { padding: 16, paddingBottom: 32 },
   userSection: {
     alignItems: 'center',
