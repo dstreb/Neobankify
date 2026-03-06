@@ -121,7 +121,7 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
 
   // Render: Rewards Account Picker Modal
   const renderAccountPickerModal = () => (
-    <Modal visible={showAccountPicker} transparent animationType="slide">
+    <Modal visible={showAccountPicker} transparent animationType="slide" onRequestClose={() => setShowAccountPicker(false)}>
       <Pressable style={st.modalOverlay} onPress={() => setShowAccountPicker(false)}>
         <Pressable style={[st.modalContent, { backgroundColor: colors.surface }]} onPress={() => {}}>
           <View style={st.modalHandle} />
@@ -191,11 +191,11 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
             <View style={st.quickActionIcon}><Ionicons name="add-outline" size={22} color="#FFFFFF" /></View>
             <Text style={st.quickActionLabel}>Link</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={st.quickActionBtn} onPress={() => { if (accounts.length > 0) { setSelectedAccount(accounts[0]); setTradeAmount(''); setStep('buy_points'); } }}>
+          <TouchableOpacity style={st.quickActionBtn} onPress={() => { const target = selectedRewardsAccount || accounts[0]; if (target) { setSelectedAccount(target); setTradeAmount(''); setStep('buy_points'); } }}>
             <View style={st.quickActionIcon}><Ionicons name="arrow-down-outline" size={22} color="#FFFFFF" /></View>
             <Text style={st.quickActionLabel}>Buy</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={st.quickActionBtn} onPress={() => { if (accounts.length > 0) { setSelectedAccount(accounts[0]); setTradeAmount(''); setStep('sell_points'); } }}>
+          <TouchableOpacity style={st.quickActionBtn} onPress={() => { const target = selectedRewardsAccount || accounts[0]; if (target) { setSelectedAccount(target); setTradeAmount(''); setStep('sell_points'); } }}>
             <View style={st.quickActionIcon}><Ionicons name="arrow-up-outline" size={22} color="#FFFFFF" /></View>
             <Text style={st.quickActionLabel}>Sell</Text>
           </TouchableOpacity>
