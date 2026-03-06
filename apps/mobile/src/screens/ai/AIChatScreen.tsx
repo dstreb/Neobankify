@@ -88,6 +88,7 @@ export function AIChatScreen() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [elevenLabsActive, setElevenLabsActive] = useState(isElevenLabsReady());
 
   const scrollViewRef = useRef<ScrollView>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -999,6 +1000,7 @@ export function AIChatScreen() {
                   onPress={() => {
                     if (elevenLabsKey.trim()) {
                       setupElevenLabs(elevenLabsKey.trim());
+                      setElevenLabsActive(true);
                     }
                   }}
                 >
@@ -1006,7 +1008,7 @@ export function AIChatScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
-                {isElevenLabsReady() ? 'Voice AI active (Listen buttons visible on AI responses)' : 'Enter your key to enable voice features'}
+                {elevenLabsActive ? 'Voice AI active (Listen buttons visible on AI responses)' : 'Enter your key to enable voice features'}
               </Text>
               <Text style={st.settingsLabel}>Response Type</Text>
               <View style={st.responseTypeRow}>
