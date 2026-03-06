@@ -120,14 +120,15 @@ export function AIChatScreen() {
       const aiMsg = generateAIResponse(userMsg.text);
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
-      if (settings.chatsLeft <= 1) {
-        setSettings((s) => ({ ...s, chatsLeft: s.chatsLeft - 1 }));
-        setTimeout(() => setStep('out_of_tokens'), 500);
-      } else {
-        setSettings((s) => ({ ...s, chatsLeft: s.chatsLeft - 1 }));
-      }
+      setSettings((s) => {
+        const newChatsLeft = s.chatsLeft - 1;
+        if (newChatsLeft <= 0) {
+          setTimeout(() => setStep('out_of_tokens'), 500);
+        }
+        return { ...s, chatsLeft: newChatsLeft };
+      });
     }, 1200);
-  }, [inputText, settings.chatsLeft]);
+  }, [inputText]);
 
   const handleVoiceSend = useCallback(() => {
     setVoiceRecording(false);
@@ -145,6 +146,13 @@ export function AIChatScreen() {
       const aiMsg = generateAIResponse(voiceText);
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
+      setSettings((s) => {
+        const newChatsLeft = s.chatsLeft - 1;
+        if (newChatsLeft <= 0) {
+          setTimeout(() => setStep('out_of_tokens'), 500);
+        }
+        return { ...s, chatsLeft: newChatsLeft };
+      });
     }, 1200);
   }, []);
 

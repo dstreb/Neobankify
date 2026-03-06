@@ -76,7 +76,7 @@ export const RICH_CARDS: Record<string, RichCard> = {
         { name: 'Housing', percent: 40, color: '#0EA5E9' },
         { name: 'Bills', percent: 30, color: '#6366F1' },
         { name: 'Grocery', percent: 15, color: '#10B981' },
-        { name: 'Other', percent: 5, color: '#F59E0B' },
+        { name: 'Other', percent: 15, color: '#F59E0B' },
       ],
       total: 4158.00,
       change: -4.25,
