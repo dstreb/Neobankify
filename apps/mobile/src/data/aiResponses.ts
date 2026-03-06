@@ -3,7 +3,22 @@
 // =====================================================
 // Rich response card types matching the design screens.
 // In production, these would come from the AI backend.
+//
+// IMPORTANT: Rich cards pull their data from the SAME shared
+// data sources used by the Home / Dashboard screen so that
+// balances, accounts, and transactions are always consistent.
+// When we swap mock data for real API calls, the AI cards
+// will automatically reflect the live data.
 // =====================================================
+
+import {
+  MOCK_ACCOUNTS,
+  MOCK_TRANSACTIONS,
+  MOCK_CARDS,
+  WEEKLY_SPENDING,
+  getConsolidatedBalance,
+} from './accounts';
+import { INITIAL_POTS } from './savingsPots';
 
 export type RichCardType =
   | 'account_balance'
@@ -49,46 +64,68 @@ function mid(): string { return `m${_msgId++}`; }
 function ts(): string { return new Date().toISOString(); }
 
 // =====================================================
-// MOCK RICH CARD DATA
+// RICH CARD DATA — built from shared data sources
+// =====================================================
+// Cards that map to Home screen data use the shared
+// MOCK_ACCOUNTS, MOCK_TRANSACTIONS, etc. so the AI
+// always shows the same values the user sees on Home.
 // =====================================================
 
+const primaryAccount = MOCK_ACCOUNTS.find((a) => a.type === 'Checking') || MOCK_ACCOUNTS[0];
+const savingsAccount = MOCK_ACCOUNTS.find((a) => a.type === 'Savings') || MOCK_ACCOUNTS[1];
+const creditAccount = MOCK_ACCOUNTS.find((a) => a.type === 'Credit');
+const consolidatedBalance = getConsolidatedBalance();
+const today = new Date();
+const dateStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
 export const RICH_CARDS: Record<string, RichCard> = {
+  // --- Pulls from MOCK_ACCOUNTS (same as Home dashboard) ---
   account_balance: {
     type: 'account_balance',
     data: {
       title: 'My Account Balance',
-      accountName: 'Personal',
-      accountNumber: '****1187',
-      balance: 12.08,
+      accountName: primaryAccount.name,
+      accountNumber: `****${primaryAccount.lastFour}`,
+      balance: primaryAccount.balance,
       currency: 'USD',
       flag: '\u{1F1FA}\u{1F1F8}',
-      date: 'Jun 25, 2025',
+      date: dateStr,
       aer: '3.25% AER',
-      trend: 'down',
+      trend: 'up',
+      // Also include all accounts for the full breakdown
+      allAccounts: MOCK_ACCOUNTS.map((a) => ({
+        name: a.name,
+        type: a.type,
+        lastFour: a.lastFour,
+        balance: a.balance,
+      })),
+      consolidatedBalance,
     },
   },
   spending_breakdown: {
     type: 'spending_breakdown',
     data: {
       title: 'Spending',
-      period: 'Jan 2025',
+      period: today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       categories: [
         { name: 'Housing', percent: 40, color: '#0EA5E9' },
         { name: 'Bills', percent: 30, color: '#6366F1' },
         { name: 'Grocery', percent: 15, color: '#10B981' },
         { name: 'Other', percent: 15, color: '#F59E0B' },
       ],
-      total: 4158.00,
+      // Derive total from absolute value of negative transactions
+      total: MOCK_TRANSACTIONS.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0),
       change: -4.25,
     },
   },
+  // --- Pulls from MOCK_ACCOUNTS (Savings) ---
   deposit_funds: {
     type: 'deposit_funds',
     data: {
       title: 'Request Deposit',
       amount: 5.00,
       quickAmounts: [10, 25, 50, 100],
-      targetAccount: 'Savings ****8812',
+      targetAccount: `${savingsAccount.name} ****${savingsAccount.lastFour}`,
     },
   },
   currency_conversion: {
@@ -102,21 +139,22 @@ export const RICH_CARDS: Record<string, RichCard> = {
       rate: '1 USD = 0.81154 GBP',
       fee: 0.00215,
       speed: 'Instant',
-      fromAvailable: 120,
+      fromAvailable: primaryAccount.balance,
       toAvailable: 0,
     },
   },
+  // --- Pulls from MOCK_ACCOUNTS for from/to ---
   transfer_money: {
     type: 'transfer_money',
     data: {
       title: 'Add New Transfer',
       amount: 50,
-      from: 'Savings Account',
-      fromAccount: 'SwiftBank Checking ****7784',
+      from: `${savingsAccount.name} Account`,
+      fromAccount: `SwiftBank ${primaryAccount.type} ****${primaryAccount.lastFour}`,
       to: 'Julie Andrews',
       toAccount: 'Chase ****7784',
       date: 'Today',
-      available: 1257.00,
+      available: savingsAccount.balance,
     },
   },
   payment_request: {
@@ -131,26 +169,29 @@ export const RICH_CARDS: Record<string, RichCard> = {
       shareOptions: ['Email', 'Copy Link', 'QR Code'],
     },
   },
+  // --- Pulls from MOCK_ACCOUNTS (Primary) ---
   account_details: {
     type: 'account_details',
     data: {
       title: 'Account Details',
-      accountName: 'Primary Account',
-      accountType: 'SwiftBank Checking ****7784',
-      accountNumber: '44121977784',
+      accountName: `${primaryAccount.name} Account`,
+      accountType: `SwiftBank ${primaryAccount.type} ****${primaryAccount.lastFour}`,
+      accountNumber: `4412197${primaryAccount.lastFour}`,
       routingNumber: 'GYXX157',
-      amountAvailable: 1250.00,
-      availableToUse: 1000.00,
+      amountAvailable: primaryAccount.balance,
+      availableToUse: primaryAccount.balance,
       interestRate: '4.31%',
-      type: 'Online Checking',
+      type: `Online ${primaryAccount.type}`,
     },
   },
+  // --- Credit account from MOCK_ACCOUNTS ---
   credit_breakdown: {
     type: 'credit_breakdown',
     data: {
       title: 'Credit Breakdown',
       creditScore: 775,
-      totalAccounts: 4,
+      totalAccounts: creditAccount ? 1 : 0,
+      totalCreditBalance: creditAccount ? creditAccount.balance : 0,
       credits: [
         { name: 'Dream Kitchen', balance: 5000.00 },
         { name: 'Student Loan', balance: 10000.00 },
@@ -170,43 +211,60 @@ export const RICH_CARDS: Record<string, RichCard> = {
       leftToPay: 330.00,
     },
   },
+  // --- Pulls from MOCK_CARDS (same as Home My Card section) ---
   card_management: {
     type: 'card_management',
     data: {
       title: 'My Cards',
-      cardName: 'Physical Card',
-      lastFour: '7781',
+      cardName: MOCK_CARDS.length > 0 ? MOCK_CARDS[0].name : 'Physical Card',
+      lastFour: MOCK_CARDS.length > 0 ? MOCK_CARDS[0].lastFour : '0000',
+      cardBalance: MOCK_CARDS.length > 0 ? MOCK_CARDS[0].balance : 0,
       isLocked: true,
       actions: ['Unlock', 'See Detail', 'More'],
+      allCards: MOCK_CARDS.map((c) => ({
+        name: c.name,
+        type: c.type,
+        lastFour: c.lastFour,
+        balance: c.balance,
+      })),
     },
   },
+  // --- Pulls from MOCK_TRANSACTIONS (same as Home Latest Activity) ---
   recent_transactions: {
     type: 'recent_transactions',
     data: {
       title: 'Recent Transactions',
-      transactions: [
-        { type: 'Deposit', to: 'To Primary ****7781', amount: 55, date: 'Sep 23' },
-        { type: 'Deposit', to: 'To Primary ****7781', amount: 40, date: 'Sep 23' },
-        { type: 'Withdraw', to: 'To Chase ****8845', amount: -120, date: 'Sep 23' },
-        { type: 'Transfer', to: 'To Julia Brown', amount: -75, date: 'Sep 23' },
-      ],
+      transactions: MOCK_TRANSACTIONS.map((t) => ({
+        type: t.type,
+        to: t.description,
+        amount: t.amount,
+        date: dateStr,
+      })),
     },
   },
+  // --- Pulls from INITIAL_POTS (same as Savings Pots) ---
   savings_pot_creation: {
     type: 'savings_pot_creation',
     data: {
-      title: 'Input Date',
-      potName: 'Vacation',
-      goalAmount: 5000,
-      selectedDate: 'Jan 10, 2026',
+      title: 'Your Savings Pots',
+      potName: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].name : 'Vacation',
+      goalAmount: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].goalAmount : 5000,
+      currentAmount: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].currentAmount : 0,
+      selectedDate: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].targetDate : 'Jan 10, 2026',
+      allPots: INITIAL_POTS.map((p) => ({
+        name: p.name,
+        currentAmount: p.currentAmount,
+        goalAmount: p.goalAmount,
+        targetDate: p.targetDate,
+      })),
     },
   },
   recurring_deposit: {
     type: 'recurring_deposit',
     data: {
-      title: 'Input Text',
-      amount: 250,
-      frequency: 'Monthly',
+      title: 'Recurring Deposit',
+      amount: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].recurringAmount : 250,
+      frequency: INITIAL_POTS.length > 0 ? INITIAL_POTS[0].recurringFrequency : 'Monthly',
       nextPaymentDate: 'July 1st',
     },
   },
@@ -229,8 +287,8 @@ export const RICH_CARDS: Record<string, RichCard> = {
     type: 'bank_statement',
     data: {
       title: 'File Download',
-      fileName: 'Swiftbank Primary',
-      description: 'Account Statement Nov 2025',
+      fileName: `Swiftbank ${primaryAccount.name}`,
+      description: `Account Statement ${today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`,
       size: '251kb',
       format: 'PDF Format',
     },
@@ -255,16 +313,17 @@ export const RICH_CARDS: Record<string, RichCard> = {
       projectedAmount: 1057088.00,
       yearsToGrow: 20,
       avgReturn: 7,
-      currentBalance: 515112,
+      currentBalance: savingsAccount.balance,
     },
   },
+  // --- Pulls from WEEKLY_SPENDING (same as Home Monthly Insight) ---
   activity_summary: {
     type: 'activity_summary',
     data: {
       title: 'Activity Summary',
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      withdrawals: [200, 150, 300, 100, 250, 180, 220],
-      deposits: [350, 200, 100, 400, 150, 300, 445],
+      days: WEEKLY_SPENDING.map((d) => d.day),
+      withdrawals: WEEKLY_SPENDING.map((d) => d.spending),
+      deposits: WEEKLY_SPENDING.map((d) => d.income),
     },
   },
   financial_resources: {
