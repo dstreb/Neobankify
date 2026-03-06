@@ -896,7 +896,7 @@ export function AIChatScreen() {
       <View style={[st.fullScreen, { backgroundColor: '#0C1B2A' }]}>
         <SafeAreaView style={st.flex1} edges={['top', 'bottom']}>
           <View style={st.voiceHeader}>
-            <TouchableOpacity onPress={() => { setVoiceRecording(false); setStep('chat'); }}>
+            <TouchableOpacity onPress={() => { if (stopListeningRef.current) { stopListeningRef.current(); stopListeningRef.current = null; } stopListening(); setVoiceRecording(false); setStep('chat'); }}>
               <Ionicons name="close" size={28} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={st.voiceHeaderTitle}>Voice Mode</Text>
