@@ -24,6 +24,14 @@ import {
   type ChatSettings,
   type AIModelOption,
 } from '../../data/aiResponses';
+import { initElevenLabs, isElevenLabsReady, speakText } from '../../services/elevenlabs';
+import {
+  isSpeechRecognitionSupported,
+  requestMicrophonePermission,
+  startListening,
+  stopListening,
+} from '../../services/speechRecognition';
+import { setupElevenLabs, getElevenLabsApiKey } from '../../config/elevenlabs';
 
 // =====================================================
 // AI Banking Assistant - Full-Featured Chat Screen
@@ -75,10 +83,17 @@ export function AIChatScreen() {
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceTimer, setVoiceTimer] = useState(0);
   const [showMediaOptions, setShowMediaOptions] = useState(false);
+  const [elevenLabsKey, setElevenLabsKey] = useState(getElevenLabsApiKey());
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waveAnim = useRef(new Animated.Value(0)).current;
+  const stopSpeakingRef = useRef<(() => void) | null>(null);
+  const stopListeningRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -135,15 +150,56 @@ export function AIChatScreen() {
     }, 1200);
   }, [inputText, settings.chatsLeft]);
 
+  // Start voice recording with real speech recognition
+  const handleStartVoice = useCallback(async () => {
+    setVoiceError(null);
+    setVoiceTranscript('');
+    if (!isSpeechRecognitionSupported()) {
+      setVoiceError('Speech recognition not supported in this browser. Try Chrome.');
+      return;
+    }
+    const hasMic = await requestMicrophonePermission();
+    if (!hasMic) {
+      setVoiceError('Microphone permission denied. Please allow microphone access.');
+      return;
+    }
+    setVoiceRecording(true);
+    stopListeningRef.current = startListening({
+      onResult: (transcript, isFinal) => {
+        setVoiceTranscript(transcript);
+        if (isFinal) {
+          setVoiceTranscript(transcript);
+        }
+      },
+      onError: (error) => {
+        setVoiceError(`Speech error: ${error}`);
+      },
+      onEnd: () => {
+        // Speech recognition ended naturally
+      },
+    });
+  }, []);
+
+  // Stop voice recording and send the transcript
   const handleVoiceSend = useCallback(() => {
+    // Stop speech recognition
+    if (stopListeningRef.current) {
+      stopListeningRef.current();
+      stopListeningRef.current = null;
+    }
+    stopListening();
     setVoiceRecording(false);
     setStep('chat');
+
+    const voiceText = voiceTranscript.trim();
+    if (!voiceText) return;
+    setVoiceTranscript('');
+
     // Guard: if no chats remaining, redirect to out_of_tokens
     if (settings.chatsLeft <= 0) {
       setStep('out_of_tokens');
       return;
     }
-    const voiceText = 'Show me my account balance';
     const userMsg: AIChatMsg = {
       id: `u${Date.now()}`,
       role: 'user',
@@ -156,6 +212,10 @@ export function AIChatScreen() {
       const aiMsg = generateAIResponse(voiceText);
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
+      // Speak the AI response if ElevenLabs is configured
+      if (isElevenLabsReady()) {
+        handleSpeakMessage(aiMsg.id, aiMsg.text);
+      }
       setSettings((s) => {
         const newChatsLeft = Math.max(0, s.chatsLeft - 1);
         if (newChatsLeft <= 0) {
@@ -164,7 +224,46 @@ export function AIChatScreen() {
         return { ...s, chatsLeft: newChatsLeft };
       });
     }, 1200);
-  }, [settings.chatsLeft]);
+  }, [settings.chatsLeft, voiceTranscript]);
+
+  // Speak an AI message using ElevenLabs TTS
+  const handleSpeakMessage = useCallback(async (msgId: string, text: string) => {
+    if (!isElevenLabsReady()) return;
+    // Stop any current playback
+    if (stopSpeakingRef.current) {
+      stopSpeakingRef.current();
+      stopSpeakingRef.current = null;
+    }
+    setSpeakingMsgId(msgId);
+    setIsSpeaking(true);
+    const cleanup = await speakText(text, {
+      onStart: () => {
+        setSpeakingMsgId(msgId);
+        setIsSpeaking(true);
+      },
+      onEnd: () => {
+        setSpeakingMsgId(null);
+        setIsSpeaking(false);
+        stopSpeakingRef.current = null;
+      },
+      onError: () => {
+        setSpeakingMsgId(null);
+        setIsSpeaking(false);
+        stopSpeakingRef.current = null;
+      },
+    });
+    stopSpeakingRef.current = cleanup;
+  }, []);
+
+  // Stop TTS playback
+  const handleStopSpeaking = useCallback(() => {
+    if (stopSpeakingRef.current) {
+      stopSpeakingRef.current();
+      stopSpeakingRef.current = null;
+    }
+    setSpeakingMsgId(null);
+    setIsSpeaking(false);
+  }, []);
 
   const handleClearData = useCallback(() => {
     setMessages([]);
@@ -709,6 +808,21 @@ export function AIChatScreen() {
                   <View style={st.aiBubble}>
                     <Text style={st.aiBubbleText}>{msg.text}</Text>
                     {msg.richCard && renderRichCard(msg.richCard)}
+                    {isElevenLabsReady() && (
+                      <TouchableOpacity
+                        style={st.speakBtn}
+                        onPress={() => speakingMsgId === msg.id ? handleStopSpeaking() : handleSpeakMessage(msg.id, msg.text)}
+                      >
+                        <Ionicons
+                          name={speakingMsgId === msg.id ? 'stop-circle-outline' : 'volume-high-outline'}
+                          size={16}
+                          color={speakingMsgId === msg.id ? '#EF4444' : '#94A3B8'}
+                        />
+                        <Text style={[st.speakBtnText, speakingMsgId === msg.id && { color: '#EF4444' }]}>
+                          {speakingMsgId === msg.id ? 'Stop' : 'Listen'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               )}
@@ -739,7 +853,7 @@ export function AIChatScreen() {
                 <Ionicons name="send" size={18} color="#FFFFFF" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={st.micBtn} onPress={() => { setStep('voice_mode'); setVoiceRecording(true); }}>
+              <TouchableOpacity style={st.micBtn} onPress={() => { setStep('voice_mode'); handleStartVoice(); }}>
                 <Ionicons name="mic" size={22} color={colors.primary} />
               </TouchableOpacity>
             )}
@@ -787,6 +901,12 @@ export function AIChatScreen() {
             </Animated.View>
             <Text style={st.voiceTimerText}>{formatTime(voiceTimer)}</Text>
             <Text style={st.voiceStatusText}>{voiceRecording ? 'Listening...' : 'Tap to start'}</Text>
+            {voiceTranscript ? (
+              <Text style={st.voiceTranscriptText}>"{voiceTranscript}"</Text>
+            ) : null}
+            {voiceError ? (
+              <Text style={st.voiceErrorText}>{voiceError}</Text>
+            ) : null}
           </View>
           <View style={st.voiceActions}>
             {voiceRecording ? (
@@ -794,7 +914,7 @@ export function AIChatScreen() {
                 <Ionicons name="stop" size={32} color="#FFFFFF" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[st.voiceStartBtn, { backgroundColor: colors.primary }]} onPress={() => setVoiceRecording(true)}>
+              <TouchableOpacity style={[st.voiceStartBtn, { backgroundColor: colors.primary }]} onPress={handleStartVoice}>
                 <Ionicons name="mic" size={32} color="#FFFFFF" />
               </TouchableOpacity>
             )}
@@ -855,6 +975,31 @@ export function AIChatScreen() {
                 <Text style={st.settingsDropdownText}>{settings.languagePreference}</Text>
                 <Ionicons name="chevron-down" size={16} color="#94A3B8" />
               </View>
+              <Text style={st.settingsLabel}>ElevenLabs API Key</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  style={[st.settingsInput, { flex: 1 }]}
+                  value={elevenLabsKey}
+                  onChangeText={setElevenLabsKey}
+                  placeholder="Enter API key for voice..."
+                  placeholderTextColor="#64748B"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={[st.cardActionBtn, { backgroundColor: colors.primary, paddingHorizontal: 16, marginTop: 0 }]}
+                  onPress={() => {
+                    if (elevenLabsKey.trim()) {
+                      setupElevenLabs(elevenLabsKey.trim());
+                    }
+                  }}
+                >
+                  <Text style={st.cardActionText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>
+                {isElevenLabsReady() ? 'Voice AI active (Listen buttons visible on AI responses)' : 'Enter your key to enable voice features'}
+              </Text>
               <Text style={st.settingsLabel}>Response Type</Text>
               <View style={st.responseTypeRow}>
                 {(['Neutral', 'Motivating'] as const).map((rt) => (
@@ -1158,6 +1303,10 @@ const st = StyleSheet.create({
   voiceWaveInner: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
   voiceTimerText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF', marginTop: 24 },
   voiceStatusText: { fontSize: 14, color: '#94A3B8', marginTop: 8 },
+  voiceTranscriptText: { fontSize: 16, color: '#E2E8F0', marginTop: 16, paddingHorizontal: 32, textAlign: 'center', fontStyle: 'italic' },
+  voiceErrorText: { fontSize: 13, color: '#EF4444', marginTop: 12, paddingHorizontal: 32, textAlign: 'center' },
+  speakBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 4 },
+  speakBtnText: { fontSize: 12, color: '#94A3B8' },
   voiceActions: { alignItems: 'center', paddingBottom: 40 },
   voiceStopBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   voiceStartBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
