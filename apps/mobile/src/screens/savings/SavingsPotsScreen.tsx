@@ -730,7 +730,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={s.multiplierHint}>Spend $1.10, save ${(1.10 * newMultiplier - 1.10).toFixed(2)}</Text>
+        <Text style={s.multiplierHint}>Spend $1.10, save ${((Math.ceil(1.10) - 1.10) * newMultiplier).toFixed(2)}</Text>
       </View>
       <View style={s.wizardActions}>
         <TouchableOpacity style={s.wizardPrimaryBtn} onPress={() => setStep('create_recurring')}>
