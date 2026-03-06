@@ -15,6 +15,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { formatCurrency } from '../../utils/formatters';
+import { INITIAL_POTS } from '../../data/savingsPots';
 
 // =====================================================
 // Mock data for demo - in production, fetched from APIs
@@ -32,12 +33,8 @@ const MOCK_TRANSACTIONS = [
   { id: '4', type: 'Convert', description: 'SGD \u2192 USD', amount: 10125.00, icon: 'repeat-outline' as const },
 ];
 
-const MOCK_SAVINGS_POTS = [
-  { id: '1', name: 'Rainy Day', amount: 1250, total: 1250, timeLeft: '1y left' },
-  { id: '2', name: 'Home Renovation', amount: 250, total: 500, timeLeft: '1y left' },
-  { id: '3', name: 'Education', amount: 6800, total: 10000, timeLeft: '1y left' },
-  { id: '4', name: 'Dream Vacation', amount: 1200, total: 1200, timeLeft: '1y left' },
-];
+// Savings pots data is imported from shared data/savingsPots.ts
+// so Dashboard summary and SavingsPotsScreen detail always match.
 
 const MOCK_CARDS = [
   { id: '1', name: 'swiftbank Platinum', type: 'Virtual', lastFour: '8812', balance: 1485.25 },
@@ -397,7 +394,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         <View style={styles.potsHeader}>
           <View>
             <Text style={[styles.potsTotalAmount, { color: colors.textPrimary }]}>
-              {formatCurrency(MOCK_SAVINGS_POTS.reduce((sum, p) => sum + p.amount, 0))}
+              {formatCurrency(INITIAL_POTS.reduce((sum, p) => sum + p.currentAmount, 0))}
             </Text>
             <Text style={[styles.potsTotalLabel, { color: colors.textSecondary }]}>Total Saving Pot</Text>
           </View>
@@ -406,8 +403,8 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
           </TouchableOpacity>
         </View>
         <View style={styles.potsGrid}>
-          {MOCK_SAVINGS_POTS.map((pot) => {
-            const progress = pot.amount / pot.total;
+          {INITIAL_POTS.map((pot) => {
+            const progress = pot.currentAmount / pot.goalAmount;
             return (
               <TouchableOpacity
                 key={pot.id}
@@ -415,7 +412,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
                 onPress={() => navigation.navigate('SavingsPots')}
               >
                 <Text style={[styles.potAmount, { color: colors.textPrimary }]}>
-                  {formatCurrency(pot.amount)}
+                  {formatCurrency(pot.currentAmount)}
                 </Text>
                 <Text style={[styles.potName, { color: colors.textSecondary }]}>{pot.name}</Text>
                 <View style={[styles.progressBar, { backgroundColor: colors.borderLight }]}>
@@ -427,7 +424,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
                   />
                 </View>
                 <Text style={[styles.potMeta, { color: colors.textTertiary }]}>
-                  {formatCurrency(pot.total)} Total  ·  {pot.timeLeft}
+                  {formatCurrency(pot.goalAmount)} Goal  ·  {pot.targetDate}
                 </Text>
               </TouchableOpacity>
             );
