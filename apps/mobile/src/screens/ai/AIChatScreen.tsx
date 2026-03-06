@@ -107,6 +107,11 @@ export function AIChatScreen() {
   // Handlers
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
+    // Guard: if no chats remaining, redirect to out_of_tokens
+    if (settings.chatsLeft <= 0) {
+      setStep('out_of_tokens');
+      return;
+    }
     const userMsg: AIChatMsg = {
       id: `u${Date.now()}`,
       role: 'user',
@@ -121,18 +126,23 @@ export function AIChatScreen() {
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
       setSettings((s) => {
-        const newChatsLeft = s.chatsLeft - 1;
+        const newChatsLeft = Math.max(0, s.chatsLeft - 1);
         if (newChatsLeft <= 0) {
           setTimeout(() => setStep('out_of_tokens'), 500);
         }
         return { ...s, chatsLeft: newChatsLeft };
       });
     }, 1200);
-  }, [inputText]);
+  }, [inputText, settings.chatsLeft]);
 
   const handleVoiceSend = useCallback(() => {
     setVoiceRecording(false);
     setStep('chat');
+    // Guard: if no chats remaining, redirect to out_of_tokens
+    if (settings.chatsLeft <= 0) {
+      setStep('out_of_tokens');
+      return;
+    }
     const voiceText = 'Show me my account balance';
     const userMsg: AIChatMsg = {
       id: `u${Date.now()}`,
@@ -147,14 +157,14 @@ export function AIChatScreen() {
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
       setSettings((s) => {
-        const newChatsLeft = s.chatsLeft - 1;
+        const newChatsLeft = Math.max(0, s.chatsLeft - 1);
         if (newChatsLeft <= 0) {
           setTimeout(() => setStep('out_of_tokens'), 500);
         }
         return { ...s, chatsLeft: newChatsLeft };
       });
     }, 1200);
-  }, []);
+  }, [settings.chatsLeft]);
 
   const handleClearData = useCallback(() => {
     setMessages([]);
