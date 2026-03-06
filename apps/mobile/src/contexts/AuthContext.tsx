@@ -31,11 +31,13 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  // DEMO MODE: bypass auth for Expo web testing (no backend)
+  const DEMO_MODE = true;
   const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-    isOnboardingComplete: false,
+    user: DEMO_MODE ? { id: 'demo-1', email: 'demo@neobank.com', firstName: 'Demo', lastName: 'User', kycStatus: 'approved' } as User : null,
+    isAuthenticated: DEMO_MODE,
+    isLoading: false,
+    isOnboardingComplete: DEMO_MODE,
   });
 
   // Check for existing session on mount

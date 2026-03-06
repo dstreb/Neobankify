@@ -250,13 +250,16 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
     }, 1000);
   };
 
+  const [deleteError, setDeleteError] = useState('');
+
   const handleDeletePot = () => {
     if (!selectedPot) return;
     if (selectedPot.currentAmount > 0) {
-      // Cannot delete pot with balance — go back to edit
-      setStep('pot_edit');
+      // Cannot delete pot with balance — show error message on the delete confirmation screen
+      setDeleteError(`Please withdraw your ${formatCurrency(selectedPot.currentAmount)} balance before deleting this pot.`);
       return;
     }
+    setDeleteError('');
     deletePot(selectedPot.id);
     setSelectedPot(null);
     setStep('list');
@@ -621,7 +624,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
         <Text style={s.multiplierHint}>Spend $1.10, save ${((Math.ceil(1.10) - 1.10) * newMultiplier).toFixed(2)}</Text>
       </View>
       <View style={s.wizardActions}>
-        <TouchableOpacity style={s.wizardPrimaryBtn} onPress={() => setStep('create_recurring')}>
+        <TouchableOpacity style={s.wizardPrimaryBtn} onPress={() => { setNewRoundupsEnabled(true); setStep('create_recurring'); }}>
           <Text style={s.wizardPrimaryBtnText}>Continue</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </TouchableOpacity>
@@ -1166,7 +1169,15 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
         <Text style={s.deleteModalSub}>
           You need to withdraw all of your money from that. Then please let me can delete it.
         </Text>
-        <TouchableOpacity style={s.deleteConfirmBtn} onPress={handleDeletePot}>
+        {deleteError !== '' && (
+          <View style={{ backgroundColor: '#EF444420', borderRadius: 8, padding: 10, marginBottom: 10, width: '100%' }}>
+            <Text style={{ color: '#EF4444', fontSize: 13, textAlign: 'center' }}>{deleteError}</Text>
+          </View>
+        )}
+        <TouchableOpacity
+          style={[s.deleteConfirmBtn, selectedPot && selectedPot.currentAmount > 0 && { opacity: 0.5 }]}
+          onPress={handleDeletePot}
+        >
           <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
           <Text style={s.deleteConfirmBtnText}>Yes, delete pot</Text>
         </TouchableOpacity>

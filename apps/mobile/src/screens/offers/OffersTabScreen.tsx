@@ -27,7 +27,7 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(amount);
 }
 
-type ScreenStep = 'overview' | 'account_detail' | 'add_account' | 'link_success' | 'buy_points' | 'sell_points';
+type ScreenStep = 'overview' | 'account_detail' | 'add_account' | 'link_success' | 'buy_points' | 'sell_points' | 'suggest_rewards' | 'suggest_success';
 
 export function OffersTabScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void } }) {
   const { theme } = useTheme();
@@ -42,6 +42,8 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [linkMemberId, setLinkMemberId] = useState('');
   const [tradeAmount, setTradeAmount] = useState('');
+  const [suggestName, setSuggestName] = useState('');
+  const [suggestUrl, setSuggestUrl] = useState('');
 
   const totalCashValue = getTotalPointsValue(accounts);
   const totalPoints = getTotalPoints(accounts);
@@ -63,6 +65,8 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
       case 'account_detail': setStep('overview'); setSelectedAccount(null); break;
       case 'add_account': setStep('overview'); break;
       case 'link_success': setStep('overview'); break;
+      case 'suggest_rewards': setStep('add_account'); break;
+      case 'suggest_success': setStep('overview'); break;
       case 'buy_points': setStep('account_detail'); break;
       case 'sell_points': setStep('account_detail'); break;
       default: setStep('overview');
@@ -433,8 +437,90 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
             </TouchableOpacity>
           </View>
         )}
+        {/* Add My Rewards suggestion */}
+        <View style={st.suggestSection}>
+          <View style={[st.suggestCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="bulb-outline" size={24} color={colors.primary} />
+            <View style={st.suggestInfo}>
+              <Text style={[st.suggestTitle, { color: colors.textPrimary }]}>Don't see your rewards program?</Text>
+              <Text style={[st.suggestDesc, { color: colors.textSecondary }]}>Suggest a program and we'll work to add it to our marketplace.</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[st.suggestBtn, { backgroundColor: colors.primary }]}
+            onPress={() => { setSuggestName(''); setSuggestUrl(''); setStep('suggest_rewards'); }}
+          >
+            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+            <Text style={st.suggestBtnText}>Add My Rewards</Text>
+          </TouchableOpacity>
+        </View>
         <View style={{ height: 32 }} />
       </ScrollView>
+    </SafeAreaView>
+  );
+
+  // Render: Suggest Rewards Program
+  const renderSuggestRewards = () => (
+    <SafeAreaView style={[st.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[st.simpleHeader, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={handleBack}><Ionicons name="arrow-back" size={22} color={colors.textPrimary} /></TouchableOpacity>
+        <Text style={[st.simpleHeaderTitle, { color: colors.textPrimary }]}>Suggest a Rewards Program</Text>
+        <View style={{ width: 22 }} />
+      </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
+        <View style={[st.suggestFormCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={st.suggestFormIcon}>
+            <Ionicons name="gift-outline" size={40} color={colors.primary} />
+          </View>
+          <Text style={[st.suggestFormTitle, { color: colors.textPrimary }]}>Help us grow our marketplace</Text>
+          <Text style={[st.suggestFormDesc, { color: colors.textSecondary }]}>
+            Enter the details of the rewards program you'd like us to add. Our team will review and reach out to integrate it.
+          </Text>
+          <Text style={[st.linkFormLabel, { color: colors.textPrimary, marginTop: 20 }]}>Rewards Program Name</Text>
+          <TextInput
+            style={[st.linkFormInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
+            placeholder="e.g. Marriott Bonvoy, Southwest Rapid Rewards"
+            placeholderTextColor={colors.textTertiary}
+            value={suggestName}
+            onChangeText={setSuggestName}
+          />
+          <Text style={[st.linkFormLabel, { color: colors.textPrimary, marginTop: 16 }]}>Program Website URL</Text>
+          <TextInput
+            style={[st.linkFormInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.textPrimary }]}
+            placeholder="e.g. https://www.marriott.com/loyalty"
+            placeholderTextColor={colors.textTertiary}
+            value={suggestUrl}
+            onChangeText={setSuggestUrl}
+            keyboardType="url"
+            autoCapitalize="none"
+          />
+        </View>
+        <TouchableOpacity
+          style={[st.linkFormBtn, { backgroundColor: (suggestName.trim() && suggestUrl.trim()) ? colors.primary : colors.border, marginTop: 20 }]}
+          onPress={() => setStep('suggest_success')}
+          disabled={!suggestName.trim() || !suggestUrl.trim()}
+        >
+          <Text style={[st.linkFormBtnText, { color: (suggestName.trim() && suggestUrl.trim()) ? '#FFFFFF' : colors.textTertiary }]}>Submit Suggestion</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  // Render: Suggest Success
+  const renderSuggestSuccess = () => (
+    <SafeAreaView style={[st.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={st.successContainer}>
+        <View style={[st.successIconCircle, { backgroundColor: '#D1FAE5' }]}>
+          <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+        </View>
+        <Text style={[st.successTitle, { color: colors.textPrimary }]}>Suggestion Submitted!</Text>
+        <Text style={[st.successDesc, { color: colors.textSecondary }]}>
+          Thank you for suggesting {suggestName}. Our admin team will review your request and work to integrate this rewards program into our marketplace.
+        </Text>
+        <TouchableOpacity style={[st.successBtn, { backgroundColor: colors.primary }]} onPress={() => { setSuggestName(''); setSuggestUrl(''); setStep('overview'); }}>
+          <Text style={st.successBtnText}>Back to Rewards</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 
@@ -557,6 +643,8 @@ export function OffersTabScreen({ navigation }: { navigation: { navigate: (scree
       case 'link_success': return renderLinkSuccess();
       case 'buy_points': return renderBuyPoints();
       case 'sell_points': return renderSellPoints();
+      case 'suggest_rewards': return renderSuggestRewards();
+      case 'suggest_success': return renderSuggestSuccess();
       default: return renderOverview();
     }
   };
@@ -682,4 +770,15 @@ const st = StyleSheet.create({
   tradeBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   tradeBtnText: { fontSize: 16, fontWeight: '600' },
   tradeError: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 12 },
+  suggestSection: { marginTop: 24, paddingHorizontal: 0 },
+  suggestCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 14, borderWidth: 1, gap: 12, marginBottom: 12 },
+  suggestInfo: { flex: 1 },
+  suggestTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  suggestDesc: { fontSize: 12, lineHeight: 18 },
+  suggestBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 12 },
+  suggestBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  suggestFormCard: { borderRadius: 16, borderWidth: 1, padding: 24, alignItems: 'center' },
+  suggestFormIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#0369A110', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  suggestFormTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+  suggestFormDesc: { fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 4 },
 });
