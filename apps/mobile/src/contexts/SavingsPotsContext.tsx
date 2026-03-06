@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { INITIAL_POTS } from '../data/savingsPots';
 import type { SavingsPot } from '../data/savingsPots';
 
@@ -24,7 +24,7 @@ const SavingsPotsContext = createContext<SavingsPotsContextType | undefined>(und
 export function SavingsPotsProvider({ children }: { children: React.ReactNode }) {
   const [pots, setPots] = useState<SavingsPot[]>(INITIAL_POTS);
 
-  const totalSaved = pots.reduce((sum, p) => sum + p.currentAmount, 0);
+  const totalSaved = useMemo(() => pots.reduce((sum, p) => sum + p.currentAmount, 0), [pots]);
 
   const addPot = useCallback((pot: SavingsPot) => {
     setPots((prev) => [...prev, pot]);
@@ -38,8 +38,13 @@ export function SavingsPotsProvider({ children }: { children: React.ReactNode })
     setPots((prev) => prev.filter((p) => p.id !== potId));
   }, []);
 
+  const value = useMemo(
+    () => ({ pots, totalSaved, addPot, updatePot, deletePot }),
+    [pots, totalSaved, addPot, updatePot, deletePot]
+  );
+
   return (
-    <SavingsPotsContext.Provider value={{ pots, totalSaved, addPot, updatePot, deletePot }}>
+    <SavingsPotsContext.Provider value={value}>
       {children}
     </SavingsPotsContext.Provider>
   );

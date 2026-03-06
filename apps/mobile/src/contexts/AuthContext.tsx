@@ -42,6 +42,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Check for existing session on mount
   useEffect(() => {
+    if (DEMO_MODE) return;
     const checkSession = async () => {
       try {
         const token = await storage.getAccessToken();
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for session-expired events from the API client
   useEffect(() => {
+    if (DEMO_MODE) return;
     const unsubscribe = onSessionExpired(() => {
       setState({
         user: null,
