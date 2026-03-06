@@ -369,7 +369,11 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
 
   const handleDeletePot = () => {
     if (!selectedPot) return;
-    if (selectedPot.currentAmount > 0) return;
+    if (selectedPot.currentAmount > 0) {
+      // Cannot delete pot with balance — go back to edit
+      setStep('pot_edit');
+      return;
+    }
     setPots((prev) => prev.filter((p) => p.id !== selectedPot.id));
     setSelectedPot(null);
     setStep('list');
