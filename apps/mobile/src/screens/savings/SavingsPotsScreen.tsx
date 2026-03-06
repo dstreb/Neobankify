@@ -369,6 +369,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
 
   const handleDeletePot = () => {
     if (!selectedPot) return;
+    if (selectedPot.currentAmount > 0) return;
     setPots((prev) => prev.filter((p) => p.id !== selectedPot.id));
     setSelectedPot(null);
     setStep('list');
