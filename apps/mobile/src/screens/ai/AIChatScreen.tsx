@@ -94,6 +94,11 @@ export function AIChatScreen() {
   const waveAnim = useRef(new Animated.Value(0)).current;
   const stopSpeakingRef = useRef<(() => void) | null>(null);
   const stopListeningRef = useRef<(() => void) | null>(null);
+  const chatsLeftRef = useRef(settings.chatsLeft);
+
+  useEffect(() => {
+    chatsLeftRef.current = settings.chatsLeft;
+  }, [settings.chatsLeft]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -102,31 +107,39 @@ export function AIChatScreen() {
   }, [messages.length, isTyping]);
 
   useEffect(() => {
+    let loopAnim: Animated.CompositeAnimation | null = null;
     if (voiceRecording) {
       setVoiceTimer(0);
       voiceTimerRef.current = setInterval(() => setVoiceTimer((t) => t + 1), 1000);
-      Animated.loop(
+      loopAnim = Animated.loop(
         Animated.sequence([
           Animated.timing(waveAnim, { toValue: 1, duration: 600, useNativeDriver: false }),
           Animated.timing(waveAnim, { toValue: 0, duration: 600, useNativeDriver: false }),
         ])
-      ).start();
+      );
+      loopAnim.start();
     } else {
       if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
       waveAnim.stopAnimation();
       waveAnim.setValue(0);
     }
-    return () => { if (voiceTimerRef.current) clearInterval(voiceTimerRef.current); };
+    return () => {
+      if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
+      if (loopAnim) loopAnim.stop();
+    };
   }, [voiceRecording, waveAnim]);
 
   // Handlers
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
-    // Guard: if no chats remaining, redirect to out_of_tokens
-    if (settings.chatsLeft <= 0) {
+    // Guard: use ref for synchronous check to prevent rapid-send bypass
+    if (chatsLeftRef.current <= 0) {
       setStep('out_of_tokens');
       return;
     }
+    // Decrement ref immediately (synchronous) to block rapid sends
+    chatsLeftRef.current -= 1;
+    setSettings((s) => ({ ...s, chatsLeft: Math.max(0, s.chatsLeft - 1) }));
     const userMsg: AIChatMsg = {
       id: `u${Date.now()}`,
       role: 'user',
@@ -140,15 +153,11 @@ export function AIChatScreen() {
       const aiMsg = generateAIResponse(userMsg.text);
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
-      setSettings((s) => {
-        const newChatsLeft = Math.max(0, s.chatsLeft - 1);
-        if (newChatsLeft <= 0) {
-          setTimeout(() => setStep('out_of_tokens'), 500);
-        }
-        return { ...s, chatsLeft: newChatsLeft };
-      });
+      if (chatsLeftRef.current <= 0) {
+        setTimeout(() => setStep('out_of_tokens'), 500);
+      }
     }, 1200);
-  }, [inputText, settings.chatsLeft]);
+  }, [inputText]);
 
   // Start voice recording with real speech recognition
   const handleStartVoice = useCallback(async () => {
@@ -195,11 +204,14 @@ export function AIChatScreen() {
     if (!voiceText) return;
     setVoiceTranscript('');
 
-    // Guard: if no chats remaining, redirect to out_of_tokens
-    if (settings.chatsLeft <= 0) {
+    // Guard: use ref for synchronous check to prevent rapid-send bypass
+    if (chatsLeftRef.current <= 0) {
       setStep('out_of_tokens');
       return;
     }
+    // Decrement ref immediately (synchronous) to block rapid sends
+    chatsLeftRef.current -= 1;
+    setSettings((s) => ({ ...s, chatsLeft: Math.max(0, s.chatsLeft - 1) }));
     const userMsg: AIChatMsg = {
       id: `u${Date.now()}`,
       role: 'user',
@@ -216,15 +228,11 @@ export function AIChatScreen() {
       if (isElevenLabsReady()) {
         handleSpeakMessage(aiMsg.id, aiMsg.text);
       }
-      setSettings((s) => {
-        const newChatsLeft = Math.max(0, s.chatsLeft - 1);
-        if (newChatsLeft <= 0) {
-          setTimeout(() => setStep('out_of_tokens'), 500);
-        }
-        return { ...s, chatsLeft: newChatsLeft };
-      });
+      if (chatsLeftRef.current <= 0) {
+        setTimeout(() => setStep('out_of_tokens'), 500);
+      }
     }, 1200);
-  }, [settings.chatsLeft, voiceTranscript]);
+  }, [voiceTranscript]);
 
   // Speak an AI message using ElevenLabs TTS
   const handleSpeakMessage = useCallback(async (msgId: string, text: string) => {
