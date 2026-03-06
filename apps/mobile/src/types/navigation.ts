@@ -35,6 +35,7 @@ export type OffersStackParamList = {
   OffersHome: undefined;
   ProfileMain: undefined;
   AddAccount: undefined;
+  SavingsPots: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -50,6 +51,7 @@ export type WalletStackParamList = {
   WalletHome: undefined;
   ProfileMain: undefined;
   AddAccount: undefined;
+  SavingsPots: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -66,6 +68,7 @@ export type HistoryStackParamList = {
   ProfileMain: undefined;
   TransactionDetail: { transactionId: string };
   AddAccount: undefined;
+  SavingsPots: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;
@@ -82,6 +85,7 @@ export type HomeStackParamList = {
   NotificationsList: undefined;
   ProfileMain: undefined;
   AddAccount: undefined;
+  SavingsPots: undefined;
   // Profile sub-screens
   Security: undefined;
   Notifications: undefined;

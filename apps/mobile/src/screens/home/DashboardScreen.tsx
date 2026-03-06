@@ -401,7 +401,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             </Text>
             <Text style={[styles.potsTotalLabel, { color: colors.textSecondary }]}>Total Saving Pot</Text>
           </View>
-          <TouchableOpacity style={[styles.addPotButton, { backgroundColor: colors.brand10 }]}>
+          <TouchableOpacity style={[styles.addPotButton, { backgroundColor: colors.brand10 }]} onPress={() => navigation.navigate('SavingsPots')}>
             <Ionicons name="add" size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -412,6 +412,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
               <TouchableOpacity
                 key={pot.id}
                 style={[styles.potCard, { backgroundColor: colors.background, borderColor: colors.borderLight }]}
+                onPress={() => navigation.navigate('SavingsPots')}
               >
                 <Text style={[styles.potAmount, { color: colors.textPrimary }]}>
                   {formatCurrency(pot.amount)}

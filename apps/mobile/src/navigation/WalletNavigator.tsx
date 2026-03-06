@@ -14,6 +14,8 @@ import { TradingDashboardScreen } from '../screens/trading/TradingDashboardScree
 import { LendingDashboardScreen } from '../screens/lending/LendingDashboardScreen';
 // Add Account flow
 import { AddAccountScreen } from '../screens/accounts/AddAccountScreen';
+// Savings Pots
+import { SavingsPotsScreen } from '../screens/savings/SavingsPotsScreen';
 
 const Stack = createNativeStackNavigator<WalletStackParamList>();
 
@@ -23,6 +25,7 @@ export function WalletNavigator() {
       <Stack.Screen name="WalletHome" component={WalletScreen} />
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+      <Stack.Screen name="SavingsPots" component={SavingsPotsScreen} />
       {/* Profile sub-screens */}
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

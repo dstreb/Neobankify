@@ -35,6 +35,8 @@ import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 import { LinkedAccountsScreen } from '../screens/profile/LinkedAccountsScreen';
 // Add Account flow
 import { AddAccountScreen } from '../screens/accounts/AddAccountScreen';
+// Savings Pots
+import { SavingsPotsScreen } from '../screens/savings/SavingsPotsScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -45,6 +47,7 @@ export function HomeNavigator() {
       <Stack.Screen name="NotificationsList" component={NotificationsListScreen} />
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+      <Stack.Screen name="SavingsPots" component={SavingsPotsScreen} />
       {/* Profile sub-screens */}
       <Stack.Screen name="Security" component={SecurityScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
