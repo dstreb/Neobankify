@@ -405,7 +405,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         </View>
         <View style={styles.potsGrid}>
           {savingsPots.map((pot) => {
-            const progress = pot.currentAmount / pot.goalAmount;
+            const progress = pot.goalAmount > 0 ? pot.currentAmount / pot.goalAmount : 0;
             return (
               <TouchableOpacity
                 key={pot.id}
