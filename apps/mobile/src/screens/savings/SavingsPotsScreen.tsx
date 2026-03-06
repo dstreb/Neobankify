@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spacing, borderRadius } from '../../theme/spacing';
 import {
-  INITIAL_POTS,
   MOCK_LINKED_ACCOUNTS,
   POT_ICONS,
   POT_COLORS,
@@ -24,6 +23,7 @@ import {
   TARGET_DATES,
 } from '../../data/savingsPots';
 import type { SavingsPot, PotIcon, PotColor } from '../../data/savingsPots';
+import { useSavingsPots } from '../../contexts/SavingsPotsContext';
 
 // =====================================================
 // Helpers
@@ -117,7 +117,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
   const { colors } = theme;
 
   const [step, setStep] = useState<Step>('list');
-  const [pots, setPots] = useState<SavingsPot[]>(INITIAL_POTS);
+  const { pots, addPot, updatePot, deletePot, totalSaved } = useSavingsPots();
   const [selectedPot, setSelectedPot] = useState<SavingsPot | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -154,7 +154,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
   const [editRoundupMultiplier, setEditRoundupMultiplier] = useState(5);
   const [editRoundupEnabled, setEditRoundupEnabled] = useState(true);
 
-  const totalSaved = pots.reduce((sum, p) => sum + p.currentAmount, 0);
+  // totalSaved comes from useSavingsPots() context
   const roundupTotal = 52.25;
 
   // =====================================================
@@ -220,7 +220,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
         linkedAccountId: '1',
         activities: [],
       };
-      setPots((prev) => [...prev, newPot]);
+      addPot(newPot);
       setIsProcessing(false);
       setStep('create_success');
     }, 1500);
@@ -243,7 +243,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
         recurringAmount: editRecurringAmount,
         linkedAccountId: editLinkedAccountId,
       };
-      setPots((prev) => prev.map((p) => (p.id === selectedPot.id ? updated : p)));
+      updatePot(updated);
       setSelectedPot(updated);
       setIsProcessing(false);
       setStep('pot_detail');
@@ -257,7 +257,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
       setStep('pot_edit');
       return;
     }
-    setPots((prev) => prev.filter((p) => p.id !== selectedPot.id));
+    deletePot(selectedPot.id);
     setSelectedPot(null);
     setStep('list');
   };

@@ -15,7 +15,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { formatCurrency } from '../../utils/formatters';
-import { INITIAL_POTS } from '../../data/savingsPots';
+import { useSavingsPots } from '../../contexts/SavingsPotsContext';
 
 // =====================================================
 // Mock data for demo - in production, fetched from APIs
@@ -33,8 +33,8 @@ const MOCK_TRANSACTIONS = [
   { id: '4', type: 'Convert', description: 'SGD \u2192 USD', amount: 10125.00, icon: 'repeat-outline' as const },
 ];
 
-// Savings pots data is imported from shared data/savingsPots.ts
-// so Dashboard summary and SavingsPotsScreen detail always match.
+// Savings pots come from SavingsPotsContext so Dashboard summary
+// and SavingsPotsScreen detail always share the same live state.
 
 const MOCK_CARDS = [
   { id: '1', name: 'swiftbank Platinum', type: 'Virtual', lastFour: '8812', balance: 1485.25 },
@@ -67,6 +67,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
   const { colors, spacing } = theme;
   const { user } = useAuth();
   const { featureFlags } = useTenant();
+  const { pots: savingsPots, totalSaved: savingsPotsTotalSaved } = useSavingsPots();
 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('consolidated');
@@ -394,7 +395,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
         <View style={styles.potsHeader}>
           <View>
             <Text style={[styles.potsTotalAmount, { color: colors.textPrimary }]}>
-              {formatCurrency(INITIAL_POTS.reduce((sum, p) => sum + p.currentAmount, 0))}
+              {formatCurrency(savingsPotsTotalSaved)}
             </Text>
             <Text style={[styles.potsTotalLabel, { color: colors.textSecondary }]}>Total Saving Pot</Text>
           </View>
@@ -403,7 +404,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
           </TouchableOpacity>
         </View>
         <View style={styles.potsGrid}>
-          {INITIAL_POTS.map((pot) => {
+          {savingsPots.map((pot) => {
             const progress = pot.currentAmount / pot.goalAmount;
             return (
               <TouchableOpacity

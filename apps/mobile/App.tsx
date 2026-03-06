@@ -7,6 +7,7 @@ import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { TenantProvider } from './src/contexts/TenantContext';
 import { AIProvider } from './src/contexts/AIContext';
+import { SavingsPotsProvider } from './src/contexts/SavingsPotsContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useTheme } from './src/contexts/ThemeContext';
 
@@ -41,7 +42,9 @@ export default function App() {
           <TenantProvider>
             <AuthProvider>
               <AIProvider>
-                <AppContent />
+                <SavingsPotsProvider>
+                  <AppContent />
+                </SavingsPotsProvider>
               </AIProvider>
             </AuthProvider>
           </TenantProvider>

@@ -134,8 +134,8 @@ export const POT_COLORS: PotColor[] = [
 export const FREQUENCY_OPTIONS = ['Daily', 'Weekly', 'Monthly', 'Custom Frequency'];
 
 export const TARGET_DATES = [
-  { month: 'Jan', day: 11, year: 2025 },
-  { month: 'Feb', day: 12, year: 2026 },
+  { month: 'Jan', day: 11, year: 2027 },
+  { month: 'Feb', day: 12, year: 2027 },
   { month: 'Mar', day: 13, year: 2027 },
   { month: 'Apr', day: 14, year: 2028 },
   { month: 'May', day: 15, year: 2029 },
