@@ -39,7 +39,7 @@ import {
   endConversation,
   isConversationActive,
 } from '../../services/conversationalAI';
-import { buildAgentSystemPrompt, buildAgentFirstMessage } from '../../data/financialContext';
+import { buildAgentSystemPrompt } from '../../data/financialContext';
 
 // =====================================================
 // AI Banking Assistant - Full-Featured Chat Screen
@@ -252,10 +252,9 @@ export function AIChatScreen() {
           setConvaiMode('idle');
           setVoiceRecording(false);
         },
-      }, {
-        systemPrompt,
-        firstMessage,
-      });
+        }, {
+          systemPrompt,
+        });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       setVoiceError(msg);

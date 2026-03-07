@@ -87,7 +87,7 @@ export const MOCK_PAYMENT_REQUESTS: PaymentRequest[] = [
 ];
 
 export const CURRENCIES: Currency[] = [
-  { code: 'USD', name: 'Australian Dollar', flag: '\u{1F1FA}\u{1F1F8}', rate: 1.0 },
+  { code: 'USD', name: 'US Dollar', flag: '\u{1F1FA}\u{1F1F8}', rate: 1.0 },
   { code: 'EUR', name: 'European Euro', flag: '\u{1F1EA}\u{1F1FA}', rate: 0.85 },
   { code: 'JPY', name: 'Japanese Yen', flag: '\u{1F1EF}\u{1F1F5}', rate: 149.5 },
   { code: 'GBP', name: 'Great British Pounds', flag: '\u{1F1EC}\u{1F1E7}', rate: 0.79 },
