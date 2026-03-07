@@ -70,6 +70,7 @@ export async function startConversation(
   // Common callback handlers for session config
   const callbackHandlers = {
     onStatusChange: (status: { status: string }) => {
+      console.log('[ConvAI] Status changed:', status.status);
       callbacks?.onStatusChange?.(status.status);
     },
     onModeChange: (mode: { mode: string }) => {
@@ -78,53 +79,47 @@ export async function startConversation(
     onMessage: (message: { source: string; message: string }) => {
       callbacks?.onMessage?.(message);
     },
-    onError: (error: string) => {
+    onError: (error: string, context?: unknown) => {
+      console.error('[ConvAI] Error:', error, 'Context:', context);
       callbacks?.onError?.(error);
     },
-    onDisconnect: () => {
+    onDisconnect: (details: unknown) => {
+      console.error('[ConvAI] Disconnected. Details:', JSON.stringify(details, null, 2));
       _activeConversation = null;
       callbacks?.onDisconnect?.();
     },
-    onConnect: () => {
+    onConnect: (props: unknown) => {
+      console.log('[ConvAI] Connected. Props:', JSON.stringify(props));
       callbacks?.onConnect?.();
+    },
+    onDebug: (info: unknown) => {
+      console.log('[ConvAI] Debug:', JSON.stringify(info));
     },
   };
 
-  let conversation: typeof Conversation.prototype;
-
-  // Try with overrides first (for dynamic financial context injection).
-  // If overrides are not enabled in the agent's security settings,
-  // fall back to connecting without overrides.
-  const hasOverrides = !!(overrides?.systemPrompt || overrides?.firstMessage);
-
-  if (hasOverrides) {
-    try {
-      conversation = await Conversation.startSession({
-        agentId,
-        overrides: {
-          agent: {
-            ...(overrides.systemPrompt ? { prompt: { prompt: overrides.systemPrompt } } : {}),
-            ...(overrides.firstMessage ? { firstMessage: overrides.firstMessage } : {}),
-          },
-        },
-        ...callbackHandlers,
-      } as Parameters<typeof Conversation.startSession>[0]);
-    } catch (overrideError) {
-      // Overrides likely not enabled in agent security settings — retry without them
-      console.warn('[ConvAI] Overrides failed, retrying without:', overrideError);
-      conversation = await Conversation.startSession({
-        agentId,
-        ...callbackHandlers,
-      } as Parameters<typeof Conversation.startSession>[0]);
-    }
-  } else {
-    conversation = await Conversation.startSession({
-      agentId,
-      ...callbackHandlers,
-    } as Parameters<typeof Conversation.startSession>[0]);
-  }
+  // Connect to the agent without overrides.
+  // Overrides (systemPrompt, firstMessage) require the agent's security
+  // settings to explicitly allow them. If not enabled, the server rejects
+  // the connection immediately ("Override for field 'first_message' is not
+  // allowed by config"). Instead we use sendContextualUpdate() after
+  // connection to inject financial data safely.
+  const conversation = await Conversation.startSession({
+    agentId,
+    ...callbackHandlers,
+  } as Parameters<typeof Conversation.startSession>[0]);
 
   _activeConversation = conversation;
+
+  // Inject financial context via contextual update (no security override needed)
+  if (overrides?.systemPrompt) {
+    try {
+      conversation.sendContextualUpdate(overrides.systemPrompt);
+      console.log('[ConvAI] Financial context injected via contextual update');
+    } catch (ctxError) {
+      console.warn('[ConvAI] Failed to send contextual update:', ctxError);
+    }
+  }
+
   return conversation;
 }
 
