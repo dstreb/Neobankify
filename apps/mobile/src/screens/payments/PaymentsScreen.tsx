@@ -62,21 +62,40 @@ type Step =
   | 'recurring-confirm'
   | 'recurring-success';
 
+// Map flow param to entry step
+const FLOW_ENTRY_STEPS: Record<string, Step> = {
+  deposit: 'deposit-method',
+  transfer: 'transfer-destination',
+  convert: 'convert-currency',
+  request: 'request-currency',
+  recurring: 'recurring-schedule',
+  contacts: 'contacts',
+  withdraw: 'hub', // no dedicated withdraw flow yet
+};
+
 interface PaymentsScreenProps {
   navigation: {
     goBack: () => void;
     navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
+  route?: {
+    params?: {
+      flow?: string;
+    };
+  };
 }
 
-export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
+export function PaymentsScreen({ navigation, route }: PaymentsScreenProps) {
   const { theme } = useTheme();
   const { colors } = theme;
 
   // =====================================================
   // State
   // =====================================================
-  const [step, setStep] = useState<Step>('hub');
+  const initialFlow = route?.params?.flow;
+  const [step, setStep] = useState<Step>(
+    (initialFlow && FLOW_ENTRY_STEPS[initialFlow]) || 'hub',
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   // Convert flow
