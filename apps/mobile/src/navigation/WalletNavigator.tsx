@@ -16,6 +16,8 @@ import { LendingDashboardScreen } from '../screens/lending/LendingDashboardScree
 import { AddAccountScreen } from '../screens/accounts/AddAccountScreen';
 // Savings Pots
 import { SavingsPotsScreen } from '../screens/savings/SavingsPotsScreen';
+// Payments
+import { PaymentsScreen } from '../screens/payments/PaymentsScreen';
 
 const Stack = createNativeStackNavigator<WalletStackParamList>();
 
@@ -23,6 +25,7 @@ export function WalletNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WalletHome" component={WalletScreen} />
+      <Stack.Screen name="Payments" component={PaymentsScreen} />
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="AddAccount" component={AddAccountScreen} />
       <Stack.Screen name="SavingsPots" component={SavingsPotsScreen} />

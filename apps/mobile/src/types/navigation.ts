@@ -49,6 +49,7 @@ export type OffersStackParamList = {
 
 export type WalletStackParamList = {
   WalletHome: undefined;
+  Payments: { flow?: string } | undefined;
   ProfileMain: undefined;
   AddAccount: undefined;
   SavingsPots: undefined;

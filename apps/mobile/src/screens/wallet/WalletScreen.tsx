@@ -96,14 +96,15 @@ export function WalletScreen({ navigation }: { navigation: { navigate: (screen: 
           <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 12 }]}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             {[
-              { icon: 'send-outline' as const, label: 'Send Money' },
-              { icon: 'qr-code-outline' as const, label: 'Scan & Pay' },
-              { icon: 'receipt-outline' as const, label: 'Pay Bills' },
-              { icon: 'globe-outline' as const, label: 'International' },
+              { icon: 'send-outline' as const, label: 'Send Money', flow: 'transfer' },
+              { icon: 'qr-code-outline' as const, label: 'Request', flow: 'request' },
+              { icon: 'repeat-outline' as const, label: 'Convert', flow: 'convert' },
+              { icon: 'arrow-down-outline' as const, label: 'Deposit', flow: 'deposit' },
             ].map((action) => (
               <TouchableOpacity
                 key={action.label}
                 style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('Payments', { flow: action.flow })}
               >
                 <View style={[styles.actionIcon, { backgroundColor: colors.brand10 }]}>
                   <Ionicons name={action.icon} size={22} color={colors.primary} />
