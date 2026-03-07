@@ -123,7 +123,7 @@ export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
 
   const getConvertedAmount = () => {
     const amount = parseFloat(convertAmount) || 0;
-    return (amount * fromCurrency.rate) / toCurrency.rate;
+    return (amount * toCurrency.rate) / fromCurrency.rate;
   };
 
   // =====================================================
@@ -369,7 +369,7 @@ export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
       <View style={{ paddingHorizontal: 20, paddingTop: 24, flex: 1 }}>
         <Text style={[s.title, { color: colors.textPrimary }]}>Convert Money</Text>
         <Text style={[s.subtitle, { color: colors.textSecondary }]}>
-          1 {fromCurrency.code} = {(fromCurrency.rate / toCurrency.rate).toFixed(5)} {toCurrency.code}
+          1 {fromCurrency.code} = {(toCurrency.rate / fromCurrency.rate).toFixed(5)} {toCurrency.code}
         </Text>
 
         {/* From Currency */}
