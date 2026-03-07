@@ -37,6 +37,7 @@ import {
   endConversation,
   isConversationActive,
 } from '../../services/conversationalAI';
+import { buildAgentSystemPrompt, buildAgentFirstMessage } from '../../data/financialContext';
 
 // =====================================================
 // AI Banking Assistant - Full-Featured Chat Screen
@@ -184,6 +185,9 @@ export function AIChatScreen() {
 
     try {
       const agentId = getAgentId();
+      // Build dynamic financial context for the agent
+      const systemPrompt = buildAgentSystemPrompt();
+      const firstMessage = buildAgentFirstMessage();
       await startConversation(agentId, {
         onStatusChange: (status) => {
           setConvaiStatus(status as 'connecting' | 'connected' | 'disconnected');
@@ -211,6 +215,9 @@ export function AIChatScreen() {
           setConvaiMode('idle');
           setVoiceRecording(false);
         },
+      }, {
+        systemPrompt,
+        firstMessage,
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

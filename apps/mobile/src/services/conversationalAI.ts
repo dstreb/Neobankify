@@ -26,6 +26,18 @@ export interface ConversationCallbacks {
   onConnect?: () => void;
 }
 
+/**
+ * Overrides to customize the agent's behavior per-conversation.
+ * Allows injecting dynamic user data (account balances, transactions, etc.)
+ * into the agent's system prompt and first message.
+ */
+export interface ConversationOverrides {
+  /** Override the agent's system prompt (e.g., inject financial data) */
+  systemPrompt?: string;
+  /** Override the agent's first message (e.g., personalized greeting) */
+  firstMessage?: string;
+}
+
 let _activeConversation: typeof Conversation.prototype | null = null;
 
 /**
@@ -35,25 +47,44 @@ let _activeConversation: typeof Conversation.prototype | null = null;
  *
  * @param agentId - The ElevenLabs agent ID
  * @param callbacks - Optional event callbacks
+ * @param overrides - Optional overrides for system prompt, first message, etc.
  * @returns The Conversation instance for control
  */
 export async function startConversation(
   agentId: string,
   callbacks?: ConversationCallbacks,
+  overrides?: ConversationOverrides,
 ): Promise<typeof Conversation.prototype> {
   // End any existing conversation first
   await endConversation();
 
   // Request microphone permission first
   try {
-    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Stop all tracks immediately — we only needed to check permission
+    stream.getTracks().forEach((track) => track.stop());
   } catch {
     throw new Error('Microphone access denied. Please allow microphone access to use voice mode.');
   }
 
-  const conversation = await Conversation.startSession({
+  // Build session config with optional overrides for dynamic context
+  const sessionConfig: Record<string, unknown> = {
     agentId,
     connectionType: 'websocket',
+  };
+
+  // Inject dynamic overrides (system prompt with financial data, personalized greeting)
+  if (overrides?.systemPrompt || overrides?.firstMessage) {
+    sessionConfig.overrides = {
+      agent: {
+        ...(overrides.systemPrompt ? { prompt: { prompt: overrides.systemPrompt } } : {}),
+        ...(overrides.firstMessage ? { firstMessage: overrides.firstMessage } : {}),
+      },
+    };
+  }
+
+  const conversation = await Conversation.startSession({
+    ...sessionConfig,
     onStatusChange: (status: { status: string }) => {
       callbacks?.onStatusChange?.(status.status);
     },
