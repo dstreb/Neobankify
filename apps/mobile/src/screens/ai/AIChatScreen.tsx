@@ -19,6 +19,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import {
   generateAIResponse,
   DEFAULT_CHAT_SETTINGS,
+  matchPattern,
+  RICH_CARDS,
   type AIChatMsg,
   type RichCard,
   type ChatSettings,
@@ -100,7 +102,8 @@ export function AIChatScreen() {
   const [convaiMode, setConvaiMode] = useState<'listening' | 'speaking' | 'idle'>('idle');
   const [convaiUserText, setConvaiUserText] = useState('');
   const [convaiAgentText, setConvaiAgentText] = useState('');
-  const [convaiMessages, setConvaiMessages] = useState<Array<{ source: string; text: string }>>([]);
+  const [convaiMessages, setConvaiMessages] = useState<Array<{ source: string; text: string }>>([]); 
+  const [voiceWidgets, setVoiceWidgets] = useState<RichCard[]>([]);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -181,6 +184,7 @@ export function AIChatScreen() {
     setConvaiUserText('');
     setConvaiAgentText('');
     setConvaiMessages([]);
+    setVoiceWidgets([]);
     setVoiceRecording(true);
 
     try {
@@ -202,6 +206,18 @@ export function AIChatScreen() {
           } else if (message.source === 'ai') {
             setConvaiAgentText(message.message);
             setConvaiMessages((prev) => [...prev, { source: 'ai', text: message.message }]);
+            // Detect topic keywords and show matching widget
+            const pattern = matchPattern(message.message);
+            if (pattern?.richCardKey) {
+              const card = RICH_CARDS[pattern.richCardKey];
+              if (card) {
+                setVoiceWidgets((prev) => {
+                  // Avoid duplicate cards of the same type
+                  if (prev.some((w) => w.type === card.type)) return prev;
+                  return [...prev, card];
+                });
+              }
+            }
           }
         },
         onError: (error) => {
@@ -906,7 +922,7 @@ export function AIChatScreen() {
   // VOICE MODE
   // =====================================================
   const renderVoiceMode = () => {
-    const waveScale = waveAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] });
+    const waveScale = waveAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
     const statusLabel =
       convaiStatus === 'connecting' ? 'Connecting to AI Agent...' :
       convaiStatus === 'connected' && convaiMode === 'speaking' ? 'Agent is speaking...' :
@@ -920,58 +936,101 @@ export function AIChatScreen() {
       convaiMode === 'listening' ? colors.primary :
       colors.primary;
 
+    const hasWidgets = voiceWidgets.length > 0;
+
     return (
       <View style={[st.fullScreen, { backgroundColor: '#0C1B2A' }]}>
         <SafeAreaView style={st.flex1} edges={['top', 'bottom']}>
-          <View style={st.voiceHeader}>
-            <TouchableOpacity onPress={async () => { await endConversation(); setVoiceRecording(false); setConvaiStatus('idle'); setConvaiMode('idle'); setStep('chat'); }}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
+          {/* ---- Header row: close + title + stop/start ---- */}
+          <View style={st.voiceHeaderRow}>
+            <TouchableOpacity
+              style={st.voiceHeaderCloseBtn}
+              onPress={async () => { await endConversation(); setVoiceRecording(false); setConvaiStatus('idle'); setConvaiMode('idle'); setStep('chat'); }}
+            >
+              <Ionicons name="close" size={22} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text style={st.voiceHeaderTitle}>Voice Mode</Text>
-            <Text style={st.voiceHeaderSub}>ElevenLabs Conversational AI</Text>
-          </View>
-
-          <ScrollView style={st.flex1} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
-            <Animated.View style={[st.voiceWaveOuter, { transform: [{ scale: waveScale }] }]}>
-              <View style={[st.voiceWaveInner, { backgroundColor: micColor }]}>
-                <Ionicons name={convaiMode === 'speaking' ? 'volume-high' : 'mic'} size={48} color="#FFFFFF" />
-              </View>
-            </Animated.View>
-            <Text style={st.voiceTimerText}>{formatTime(voiceTimer)}</Text>
-            <Text style={st.voiceStatusText}>{statusLabel}</Text>
-
-            {/* Show latest user transcript */}
-            {convaiUserText ? (
-              <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
-                <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 4 }}>You said:</Text>
-                <Text style={st.voiceTranscriptText}>"{convaiUserText}"</Text>
-              </View>
-            ) : null}
-
-            {/* Show latest agent response */}
-            {convaiAgentText ? (
-              <View style={{ marginTop: 12, paddingHorizontal: 16 }}>
-                <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 4 }}>Agent:</Text>
-                <Text style={[st.voiceTranscriptText, { color: '#22C55E' }]}>"{convaiAgentText}"</Text>
-              </View>
-            ) : null}
-
-            {voiceError ? (
-              <Text style={st.voiceErrorText}>{voiceError}</Text>
-            ) : null}
-          </ScrollView>
-
-          <View style={st.voiceActions}>
+            <View style={st.voiceHeaderCenter}>
+              <Text style={st.voiceHeaderRowTitle}>Voice Mode</Text>
+              <Text style={st.voiceHeaderRowSub}>{statusLabel}</Text>
+            </View>
             {voiceRecording || convaiStatus === 'connected' || convaiStatus === 'connecting' ? (
-              <TouchableOpacity style={[st.voiceStopBtn, { backgroundColor: '#EF4444' }]} onPress={handleVoiceSend}>
-                <Ionicons name="stop" size={32} color="#FFFFFF" />
+              <TouchableOpacity style={[st.voiceHeaderActionBtn, { backgroundColor: '#EF4444' }]} onPress={handleVoiceSend}>
+                <Ionicons name="stop" size={18} color="#FFFFFF" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[st.voiceStartBtn, { backgroundColor: colors.primary }]} onPress={handleStartVoice}>
-                <Ionicons name="mic" size={32} color="#FFFFFF" />
+              <TouchableOpacity style={[st.voiceHeaderActionBtn, { backgroundColor: colors.primary }]} onPress={handleStartVoice}>
+                <Ionicons name="mic" size={18} color="#FFFFFF" />
               </TouchableOpacity>
             )}
           </View>
+
+          {/* ---- Compact voice visualizer ---- */}
+          <View style={st.voiceVisualizerCompact}>
+            <Animated.View style={[st.voiceWaveOuterCompact, { transform: [{ scale: waveScale }] }]}>
+              <View style={[st.voiceWaveInnerCompact, { backgroundColor: micColor }]}>
+                <Ionicons name={convaiMode === 'speaking' ? 'volume-high' : 'mic'} size={28} color="#FFFFFF" />
+              </View>
+            </Animated.View>
+            <View style={st.voiceVisualizerInfo}>
+              <Text style={st.voiceTimerCompact}>{formatTime(voiceTimer)}</Text>
+              {/* Latest transcript snippet */}
+              {convaiUserText ? (
+                <Text style={st.voiceSnippetUser} numberOfLines={1}>You: "{convaiUserText}"</Text>
+              ) : null}
+              {convaiAgentText ? (
+                <Text style={st.voiceSnippetAgent} numberOfLines={2}>AI: "{convaiAgentText}"</Text>
+              ) : null}
+              {voiceError ? (
+                <Text style={st.voiceErrorCompact} numberOfLines={1}>{voiceError}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* ---- Divider ---- */}
+          <View style={st.voiceDivider} />
+
+          {/* ---- Scrollable widget panel ---- */}
+          <ScrollView
+            style={st.flex1}
+            contentContainerStyle={st.voiceWidgetContent}
+          >
+            {hasWidgets ? (
+              <>
+                <Text style={st.voiceWidgetSectionTitle}>Related Information</Text>
+                {voiceWidgets.map((card, idx) => (
+                  <View key={`${card.type}-${idx}`} style={st.voiceWidgetCard}>
+                    {renderRichCard(card)}
+                  </View>
+                ))}
+              </>
+            ) : (
+              <View style={st.voiceWidgetEmpty}>
+                <Ionicons name="sparkles" size={32} color="#334155" />
+                <Text style={st.voiceWidgetEmptyTitle}>Ask a question to see visuals</Text>
+                <Text style={st.voiceWidgetEmptyDesc}>
+                  When you ask about balances, spending, transactions, or other topics,
+                  relevant widgets will appear here in real time.
+                </Text>
+              </View>
+            )}
+
+            {/* Full conversation transcript at bottom */}
+            {convaiMessages.length > 0 ? (
+              <View style={st.voiceTranscriptSection}>
+                <Text style={st.voiceTranscriptSectionTitle}>Conversation</Text>
+                {convaiMessages.map((msg, i) => (
+                  <View key={i} style={msg.source === 'user' ? st.voiceTranscriptUserRow : st.voiceTranscriptAgentRow}>
+                    <Text style={msg.source === 'user' ? st.voiceTranscriptUserLabel : st.voiceTranscriptAgentLabel}>
+                      {msg.source === 'user' ? 'You' : 'AI'}
+                    </Text>
+                    <Text style={msg.source === 'user' ? st.voiceTranscriptUserText : st.voiceTranscriptAgentText}>
+                      {msg.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </ScrollView>
         </SafeAreaView>
       </View>
     );
@@ -1349,6 +1408,7 @@ const st = StyleSheet.create({
   resourceInfo: { flex: 1 },
   resourceName: { fontSize: 14, fontWeight: '600', color: '#E2E8F0' },
   resourceDetail: { fontSize: 12, color: '#64748B' },
+  // --- Legacy voice styles (kept for compatibility) ---
   voiceHeader: { alignItems: 'center', paddingTop: 20, paddingBottom: 10 },
   voiceHeaderTitle: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', marginTop: 10 },
   voiceHeaderSub: { fontSize: 13, color: '#64748B' },
@@ -1364,6 +1424,42 @@ const st = StyleSheet.create({
   voiceActions: { alignItems: 'center', paddingBottom: 40 },
   voiceStopBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   voiceStartBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+
+  // --- New compact voice + widget styles ---
+  voiceHeaderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1E3A5F' },
+  voiceHeaderCloseBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E3A5F', alignItems: 'center', justifyContent: 'center' },
+  voiceHeaderCenter: { flex: 1, marginHorizontal: 12 },
+  voiceHeaderRowTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  voiceHeaderRowSub: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  voiceHeaderActionBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+  voiceVisualizerCompact: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
+  voiceWaveOuterCompact: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#0369A120', alignItems: 'center', justifyContent: 'center' },
+  voiceWaveInnerCompact: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  voiceVisualizerInfo: { flex: 1, gap: 2 },
+  voiceTimerCompact: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  voiceSnippetUser: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
+  voiceSnippetAgent: { fontSize: 13, color: '#22C55E', fontStyle: 'italic', lineHeight: 18 },
+  voiceErrorCompact: { fontSize: 12, color: '#EF4444' },
+
+  voiceDivider: { height: 1, backgroundColor: '#1E3A5F', marginHorizontal: 16 },
+
+  voiceWidgetContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
+  voiceWidgetSectionTitle: { fontSize: 14, fontWeight: '700', color: '#94A3B8', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  voiceWidgetCard: { marginBottom: 12 },
+
+  voiceWidgetEmpty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 32 },
+  voiceWidgetEmptyTitle: { fontSize: 16, fontWeight: '600', color: '#64748B', marginTop: 12 },
+  voiceWidgetEmptyDesc: { fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 19, marginTop: 6 },
+
+  voiceTranscriptSection: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#1E3A5F' },
+  voiceTranscriptSectionTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  voiceTranscriptUserRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  voiceTranscriptAgentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  voiceTranscriptUserLabel: { fontSize: 11, fontWeight: '700', color: '#0EA5E9', width: 28, paddingTop: 2 },
+  voiceTranscriptAgentLabel: { fontSize: 11, fontWeight: '700', color: '#22C55E', width: 28, paddingTop: 2 },
+  voiceTranscriptUserText: { flex: 1, fontSize: 13, color: '#CBD5E1', lineHeight: 18 },
+  voiceTranscriptAgentText: { flex: 1, fontSize: 13, color: '#E2E8F0', lineHeight: 18 },
   settingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   settingsTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   settingsTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1E3A5F' },
