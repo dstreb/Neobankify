@@ -31,7 +31,12 @@ import {
   startListening,
   stopListening,
 } from '../../services/speechRecognition';
-import { setupElevenLabs, getElevenLabsApiKey } from '../../config/elevenlabs';
+import { setupElevenLabs, getElevenLabsApiKey, getAgentId } from '../../config/elevenlabs';
+import {
+  startConversation,
+  endConversation,
+  isConversationActive,
+} from '../../services/conversationalAI';
 
 // =====================================================
 // AI Banking Assistant - Full-Featured Chat Screen
@@ -89,6 +94,12 @@ export function AIChatScreen() {
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [elevenLabsActive, setElevenLabsActive] = useState(isElevenLabsReady());
+  // Conversational AI state
+  const [convaiStatus, setConvaiStatus] = useState<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle');
+  const [convaiMode, setConvaiMode] = useState<'listening' | 'speaking' | 'idle'>('idle');
+  const [convaiUserText, setConvaiUserText] = useState('');
+  const [convaiAgentText, setConvaiAgentText] = useState('');
+  const [convaiMessages, setConvaiMessages] = useState<Array<{ source: string; text: string }>>([]);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -160,80 +171,77 @@ export function AIChatScreen() {
     }, 1200);
   }, [inputText]);
 
-  // Start voice recording with real speech recognition
+  // Start ElevenLabs Conversational AI voice session
   const handleStartVoice = useCallback(async () => {
     setVoiceError(null);
     setVoiceTranscript('');
-    if (!isSpeechRecognitionSupported()) {
-      setVoiceError('Speech recognition not supported in this browser. Try Chrome.');
-      return;
-    }
-    const hasMic = await requestMicrophonePermission();
-    if (!hasMic) {
-      setVoiceError('Microphone permission denied. Please allow microphone access.');
-      return;
-    }
+    setConvaiStatus('connecting');
+    setConvaiMode('idle');
+    setConvaiUserText('');
+    setConvaiAgentText('');
+    setConvaiMessages([]);
     setVoiceRecording(true);
-    stopListeningRef.current = startListening({
-      onResult: (transcript, isFinal) => {
-        setVoiceTranscript(transcript);
-        if (isFinal) {
-          setVoiceTranscript(transcript);
-        }
-      },
-      onError: (error) => {
-        setVoiceError(`Speech error: ${error}`);
-      },
-      onEnd: () => {
-        // Speech recognition ended naturally
-      },
-    });
+
+    try {
+      const agentId = getAgentId();
+      await startConversation(agentId, {
+        onStatusChange: (status) => {
+          setConvaiStatus(status as 'connecting' | 'connected' | 'disconnected');
+        },
+        onModeChange: (mode) => {
+          setConvaiMode(mode.mode as 'listening' | 'speaking' | 'idle');
+        },
+        onMessage: (message) => {
+          if (message.source === 'user') {
+            setConvaiUserText(message.message);
+            setConvaiMessages((prev) => [...prev, { source: 'user', text: message.message }]);
+          } else if (message.source === 'ai') {
+            setConvaiAgentText(message.message);
+            setConvaiMessages((prev) => [...prev, { source: 'ai', text: message.message }]);
+          }
+        },
+        onError: (error) => {
+          setVoiceError(`Voice AI error: ${error}`);
+        },
+        onConnect: () => {
+          setConvaiStatus('connected');
+        },
+        onDisconnect: () => {
+          setConvaiStatus('disconnected');
+          setConvaiMode('idle');
+          setVoiceRecording(false);
+        },
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setVoiceError(msg);
+      setVoiceRecording(false);
+      setConvaiStatus('idle');
+    }
   }, []);
 
-  // Stop voice recording and send the transcript
-  const handleVoiceSend = useCallback(() => {
-    // Stop speech recognition
-    if (stopListeningRef.current) {
-      stopListeningRef.current();
-      stopListeningRef.current = null;
-    }
-    stopListening();
+  // End the Conversational AI session and return to chat
+  const handleVoiceSend = useCallback(async () => {
+    await endConversation();
     setVoiceRecording(false);
+    setConvaiStatus('idle');
+    setConvaiMode('idle');
     setStep('chat');
 
-    const voiceText = voiceTranscript.trim();
-    if (!voiceText) return;
-    setVoiceTranscript('');
-
-    // Guard: use ref for synchronous check to prevent rapid-send bypass
-    if (chatsLeftRef.current <= 0) {
-      setStep('out_of_tokens');
-      return;
+    // Add any conversation messages to the chat history
+    const newMsgs: AIChatMsg[] = [];
+    for (const msg of convaiMessages) {
+      newMsgs.push({
+        id: `conv${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: msg.source === 'user' ? 'user' : 'assistant',
+        text: msg.text,
+        timestamp: new Date().toISOString(),
+      });
     }
-    // Decrement ref immediately (synchronous) to block rapid sends
-    chatsLeftRef.current -= 1;
-    setSettings((s) => ({ ...s, chatsLeft: Math.max(0, s.chatsLeft - 1) }));
-    const userMsg: AIChatMsg = {
-      id: `u${Date.now()}`,
-      role: 'user',
-      text: voiceText,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setIsTyping(true);
-    setTimeout(() => {
-      const aiMsg = generateAIResponse(voiceText);
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-      // Speak the AI response if ElevenLabs is configured
-      if (isElevenLabsReady()) {
-        handleSpeakMessage(aiMsg.id, aiMsg.text);
-      }
-      if (chatsLeftRef.current <= 0) {
-        setTimeout(() => setStep('out_of_tokens'), 500);
-      }
-    }, 1200);
-  }, [voiceTranscript]);
+    if (newMsgs.length > 0) {
+      setMessages((prev) => [...prev, ...newMsgs]);
+    }
+  }, [convaiMessages]);
 
   // Speak an AI message using ElevenLabs TTS
   const handleSpeakMessage = useCallback(async (msgId: string, text: string) => {
@@ -892,33 +900,62 @@ export function AIChatScreen() {
   // =====================================================
   const renderVoiceMode = () => {
     const waveScale = waveAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] });
+    const statusLabel =
+      convaiStatus === 'connecting' ? 'Connecting to AI Agent...' :
+      convaiStatus === 'connected' && convaiMode === 'speaking' ? 'Agent is speaking...' :
+      convaiStatus === 'connected' && convaiMode === 'listening' ? 'Listening to you...' :
+      convaiStatus === 'connected' ? 'Connected — speak to start' :
+      convaiStatus === 'disconnected' ? 'Disconnected' :
+      'Tap to start conversation';
+
+    const micColor =
+      convaiMode === 'speaking' ? '#22C55E' :
+      convaiMode === 'listening' ? colors.primary :
+      colors.primary;
+
     return (
       <View style={[st.fullScreen, { backgroundColor: '#0C1B2A' }]}>
         <SafeAreaView style={st.flex1} edges={['top', 'bottom']}>
           <View style={st.voiceHeader}>
-            <TouchableOpacity onPress={() => { if (stopListeningRef.current) { stopListeningRef.current(); stopListeningRef.current = null; } stopListening(); setVoiceRecording(false); setStep('chat'); }}>
+            <TouchableOpacity onPress={async () => { await endConversation(); setVoiceRecording(false); setConvaiStatus('idle'); setConvaiMode('idle'); setStep('chat'); }}>
               <Ionicons name="close" size={28} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={st.voiceHeaderTitle}>Voice Mode</Text>
-            <Text style={st.voiceHeaderSub}>ElevenLabs Voice AI</Text>
+            <Text style={st.voiceHeaderSub}>ElevenLabs Conversational AI</Text>
           </View>
-          <View style={st.voiceCenter}>
+
+          <ScrollView style={st.flex1} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
             <Animated.View style={[st.voiceWaveOuter, { transform: [{ scale: waveScale }] }]}>
-              <View style={[st.voiceWaveInner, { backgroundColor: colors.primary }]}>
-                <Ionicons name="mic" size={48} color="#FFFFFF" />
+              <View style={[st.voiceWaveInner, { backgroundColor: micColor }]}>
+                <Ionicons name={convaiMode === 'speaking' ? 'volume-high' : 'mic'} size={48} color="#FFFFFF" />
               </View>
             </Animated.View>
             <Text style={st.voiceTimerText}>{formatTime(voiceTimer)}</Text>
-            <Text style={st.voiceStatusText}>{voiceRecording ? 'Listening...' : 'Tap to start'}</Text>
-            {voiceTranscript ? (
-              <Text style={st.voiceTranscriptText}>"{voiceTranscript}"</Text>
+            <Text style={st.voiceStatusText}>{statusLabel}</Text>
+
+            {/* Show latest user transcript */}
+            {convaiUserText ? (
+              <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 4 }}>You said:</Text>
+                <Text style={st.voiceTranscriptText}>"{convaiUserText}"</Text>
+              </View>
             ) : null}
+
+            {/* Show latest agent response */}
+            {convaiAgentText ? (
+              <View style={{ marginTop: 12, paddingHorizontal: 16 }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 4 }}>Agent:</Text>
+                <Text style={[st.voiceTranscriptText, { color: '#22C55E' }]}>"{convaiAgentText}"</Text>
+              </View>
+            ) : null}
+
             {voiceError ? (
               <Text style={st.voiceErrorText}>{voiceError}</Text>
             ) : null}
-          </View>
+          </ScrollView>
+
           <View style={st.voiceActions}>
-            {voiceRecording ? (
+            {voiceRecording || convaiStatus === 'connected' || convaiStatus === 'connecting' ? (
               <TouchableOpacity style={[st.voiceStopBtn, { backgroundColor: '#EF4444' }]} onPress={handleVoiceSend}>
                 <Ionicons name="stop" size={32} color="#FFFFFF" />
               </TouchableOpacity>

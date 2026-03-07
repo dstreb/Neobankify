@@ -17,6 +17,9 @@ const ELEVENLABS_VOICE_ID = '77f6FLYGLKZrrkKUqV4J';
 // Low-latency model for conversational use
 const ELEVENLABS_MODEL_ID = 'eleven_flash_v2_5';
 
+// Conversational AI Agent ID provided by client
+const ELEVENLABS_AGENT_ID = 'agent_0901kk35n9rperwav6v46029kzh8';
+
 // API key — set via setupElevenLabs() or directly here for dev
 let _apiKey = '';
 
@@ -46,4 +49,12 @@ export function getElevenLabsApiKey(): string {
 export const ELEVENLABS_DEFAULTS = {
   voiceId: ELEVENLABS_VOICE_ID,
   modelId: ELEVENLABS_MODEL_ID,
+  agentId: ELEVENLABS_AGENT_ID,
 } as const;
+
+/**
+ * Get the Conversational AI agent ID.
+ */
+export function getAgentId(): string {
+  return ELEVENLABS_AGENT_ID;
+}
