@@ -110,6 +110,7 @@ export function AIChatScreen() {
   const waveAnim = useRef(new Animated.Value(0)).current;
   const stopSpeakingRef = useRef<(() => void) | null>(null);
   const stopListeningRef = useRef<(() => void) | null>(null);
+  const speakRequestIdRef = useRef(0);
   const chatsLeftRef = useRef(settings.chatsLeft);
 
   useEffect(() => {
@@ -269,30 +270,36 @@ export function AIChatScreen() {
   // Speak an AI message using ElevenLabs TTS
   const handleSpeakMessage = useCallback(async (msgId: string, text: string) => {
     if (!isElevenLabsReady()) return;
-    // Stop any current playback
+    // Cancel any in-progress audio before starting new request
     if (stopSpeakingRef.current) {
       stopSpeakingRef.current();
       stopSpeakingRef.current = null;
     }
-    setSpeakingMsgId(msgId);
-    setIsSpeaking(true);
+    // Track request ID to discard stale callbacks from overlapping requests
+    const requestId = ++speakRequestIdRef.current;
     const cleanup = await speakText(text, {
       onStart: () => {
+        if (speakRequestIdRef.current !== requestId) return;
         setSpeakingMsgId(msgId);
         setIsSpeaking(true);
       },
       onEnd: () => {
+        if (speakRequestIdRef.current !== requestId) return;
         setSpeakingMsgId(null);
         setIsSpeaking(false);
         stopSpeakingRef.current = null;
       },
       onError: () => {
+        if (speakRequestIdRef.current !== requestId) return;
         setSpeakingMsgId(null);
         setIsSpeaking(false);
         stopSpeakingRef.current = null;
       },
     });
-    stopSpeakingRef.current = cleanup;
+    // Only assign cleanup if this is still the current request
+    if (speakRequestIdRef.current === requestId) {
+      stopSpeakingRef.current = cleanup;
+    }
   }, []);
 
   // Stop TTS playback

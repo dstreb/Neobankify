@@ -36,7 +36,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>({
     user: DEMO_MODE ? { id: 'demo-1', email: 'demo@neobank.com', firstName: 'Demo', lastName: 'User', kycStatus: 'approved' } as User : null,
     isAuthenticated: DEMO_MODE,
-    isLoading: false,
+    isLoading: !DEMO_MODE,
     isOnboardingComplete: DEMO_MODE,
   });
 
