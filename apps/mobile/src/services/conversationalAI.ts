@@ -67,24 +67,8 @@ export async function startConversation(
     throw new Error('Microphone access denied. Please allow microphone access to use voice mode.');
   }
 
-  // Build session config with optional overrides for dynamic context
-  const sessionConfig: Record<string, unknown> = {
-    agentId,
-    connectionType: 'websocket',
-  };
-
-  // Inject dynamic overrides (system prompt with financial data, personalized greeting)
-  if (overrides?.systemPrompt || overrides?.firstMessage) {
-    sessionConfig.overrides = {
-      agent: {
-        ...(overrides.systemPrompt ? { prompt: { prompt: overrides.systemPrompt } } : {}),
-        ...(overrides.firstMessage ? { firstMessage: overrides.firstMessage } : {}),
-      },
-    };
-  }
-
-  const conversation = await Conversation.startSession({
-    ...sessionConfig,
+  // Common callback handlers for session config
+  const callbackHandlers = {
     onStatusChange: (status: { status: string }) => {
       callbacks?.onStatusChange?.(status.status);
     },
@@ -104,7 +88,41 @@ export async function startConversation(
     onConnect: () => {
       callbacks?.onConnect?.();
     },
-  });
+  };
+
+  let conversation: typeof Conversation.prototype;
+
+  // Try with overrides first (for dynamic financial context injection).
+  // If overrides are not enabled in the agent's security settings,
+  // fall back to connecting without overrides.
+  const hasOverrides = !!(overrides?.systemPrompt || overrides?.firstMessage);
+
+  if (hasOverrides) {
+    try {
+      conversation = await Conversation.startSession({
+        agentId,
+        overrides: {
+          agent: {
+            ...(overrides.systemPrompt ? { prompt: { prompt: overrides.systemPrompt } } : {}),
+            ...(overrides.firstMessage ? { firstMessage: overrides.firstMessage } : {}),
+          },
+        },
+        ...callbackHandlers,
+      } as Parameters<typeof Conversation.startSession>[0]);
+    } catch (overrideError) {
+      // Overrides likely not enabled in agent security settings — retry without them
+      console.warn('[ConvAI] Overrides failed, retrying without:', overrideError);
+      conversation = await Conversation.startSession({
+        agentId,
+        ...callbackHandlers,
+      } as Parameters<typeof Conversation.startSession>[0]);
+    }
+  } else {
+    conversation = await Conversation.startSession({
+      agentId,
+      ...callbackHandlers,
+    } as Parameters<typeof Conversation.startSession>[0]);
+  }
 
   _activeConversation = conversation;
   return conversation;
