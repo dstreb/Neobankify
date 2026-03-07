@@ -75,10 +75,11 @@ function ProgressRing({ progress, size, color }: { progress: number; size: numbe
         height: size,
         borderRadius: size / 2,
         borderWidth: strokeWidth,
-        borderColor: color,
+        borderColor: 'rgba(255,255,255,0.15)',
         borderTopColor: progress < 0.25 ? 'rgba(255,255,255,0.15)' : color,
         borderRightColor: progress < 0.5 ? 'rgba(255,255,255,0.15)' : color,
         borderBottomColor: progress < 0.75 ? 'rgba(255,255,255,0.15)' : color,
+        borderLeftColor: progress > 0 ? color : 'rgba(255,255,255,0.15)',
         transform: [{ rotate: '-90deg' }],
       }} />
       <Text style={{ color: '#FFFFFF', fontSize: size * 0.18, fontWeight: '700' }}>

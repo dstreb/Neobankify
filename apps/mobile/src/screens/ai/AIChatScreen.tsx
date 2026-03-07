@@ -108,6 +108,9 @@ export function AIChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waveAnim = useRef(new Animated.Value(0)).current;
+  const blobAnim1 = useRef(new Animated.Value(0)).current;
+  const blobAnim2 = useRef(new Animated.Value(0)).current;
+  const blobAnim3 = useRef(new Animated.Value(0)).current;
   const stopSpeakingRef = useRef<(() => void) | null>(null);
   const stopListeningRef = useRef<(() => void) | null>(null);
   const speakRequestIdRef = useRef(0);
@@ -125,6 +128,7 @@ export function AIChatScreen() {
 
   useEffect(() => {
     let loopAnim: Animated.CompositeAnimation | null = null;
+    let blobLoops: Animated.CompositeAnimation[] = [];
     if (voiceRecording) {
       setVoiceTimer(0);
       voiceTimerRef.current = setInterval(() => setVoiceTimer((t) => t + 1), 1000);
@@ -135,16 +139,30 @@ export function AIChatScreen() {
         ])
       );
       loopAnim.start();
+      // Morphing blob animations — 3 layers at different speeds
+      const makeBlob = (anim: Animated.Value, dur: number) => {
+        const loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, { toValue: 1, duration: dur, useNativeDriver: false }),
+            Animated.timing(anim, { toValue: 0, duration: dur, useNativeDriver: false }),
+          ])
+        );
+        loop.start();
+        return loop;
+      };
+      blobLoops = [makeBlob(blobAnim1, 2400), makeBlob(blobAnim2, 3200), makeBlob(blobAnim3, 1800)];
     } else {
       if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
       waveAnim.stopAnimation();
       waveAnim.setValue(0);
+      [blobAnim1, blobAnim2, blobAnim3].forEach((a) => { a.stopAnimation(); a.setValue(0); });
     }
     return () => {
       if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
       if (loopAnim) loopAnim.stop();
+      blobLoops.forEach((l) => l.stop());
     };
-  }, [voiceRecording, waveAnim]);
+  }, [voiceRecording, waveAnim, blobAnim1, blobAnim2, blobAnim3]);
 
   // Handlers
   const handleSend = useCallback(() => {
@@ -929,7 +947,6 @@ export function AIChatScreen() {
   // VOICE MODE
   // =====================================================
   const renderVoiceMode = () => {
-    const waveScale = waveAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
     const statusLabel =
       convaiStatus === 'connecting' ? 'Connecting to AI Agent...' :
       convaiStatus === 'connected' && convaiMode === 'speaking' ? 'Agent is speaking...' :
@@ -938,10 +955,22 @@ export function AIChatScreen() {
       convaiStatus === 'disconnected' ? 'Disconnected' :
       'Tap to start conversation';
 
-    const micColor =
+    const blobColor =
       convaiMode === 'speaking' ? '#22C55E' :
-      convaiMode === 'listening' ? colors.primary :
+      convaiMode === 'listening' ? '#0EA5E9' :
       colors.primary;
+
+    // Morphing blob interpolations — 3 overlapping circles at different phases
+    const blob1Scale = blobAnim1.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
+    const blob1X = blobAnim1.interpolate({ inputRange: [0, 1], outputRange: [-6, 6] });
+    const blob1Y = blobAnim2.interpolate({ inputRange: [0, 1], outputRange: [4, -4] });
+    const blob2Scale = blobAnim2.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.1] });
+    const blob2X = blobAnim2.interpolate({ inputRange: [0, 1], outputRange: [5, -5] });
+    const blob2Y = blobAnim3.interpolate({ inputRange: [0, 1], outputRange: [-3, 3] });
+    const blob3Scale = blobAnim3.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] });
+    const blob3X = blobAnim3.interpolate({ inputRange: [0, 1], outputRange: [3, -8] });
+    const blob3Y = blobAnim1.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
+    const blobOpacity = blobAnim1.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.35, 0.55, 0.35] });
 
     const hasWidgets = voiceWidgets.length > 0;
 
@@ -971,24 +1000,35 @@ export function AIChatScreen() {
             )}
           </View>
 
-          {/* ---- Compact voice visualizer ---- */}
-          <View style={st.voiceVisualizerCompact}>
-            <Animated.View style={[st.voiceWaveOuterCompact, { transform: [{ scale: waveScale }] }]}>
-              <View style={[st.voiceWaveInnerCompact, { backgroundColor: micColor }]}>
-                <Ionicons name={convaiMode === 'speaking' ? 'volume-high' : 'mic'} size={28} color="#FFFFFF" />
-              </View>
-            </Animated.View>
-            <View style={st.voiceVisualizerInfo}>
-              <Text style={st.voiceTimerCompact}>{formatTime(voiceTimer)}</Text>
-              {/* Latest transcript snippet */}
-              {convaiUserText ? (
-                <Text style={st.voiceSnippetUser} numberOfLines={1}>You: "{convaiUserText}"</Text>
-              ) : null}
-              {convaiAgentText ? (
-                <Text style={st.voiceSnippetAgent} numberOfLines={2}>AI: "{convaiAgentText}"</Text>
-              ) : null}
+          {/* ---- Morphing blob visualizer ---- */}
+          <View style={st.blobContainer}>
+            {/* Layer 1 */}
+            <Animated.View style={[
+              st.blobLayer,
+              { backgroundColor: blobColor, opacity: blobOpacity,
+                transform: [{ scale: blob1Scale }, { translateX: blob1X }, { translateY: blob1Y }] },
+            ]} />
+            {/* Layer 2 */}
+            <Animated.View style={[
+              st.blobLayer,
+              { backgroundColor: blobColor, opacity: 0.25,
+                transform: [{ scale: blob2Scale }, { translateX: blob2X }, { translateY: blob2Y }] },
+            ]} />
+            {/* Layer 3 */}
+            <Animated.View style={[
+              st.blobLayer,
+              { backgroundColor: blobColor, opacity: 0.15,
+                transform: [{ scale: blob3Scale }, { translateX: blob3X }, { translateY: blob3Y }] },
+            ]} />
+            {/* Center icon */}
+            <View style={st.blobCenterIcon}>
+              <Ionicons name={convaiMode === 'speaking' ? 'volume-high' : 'mic'} size={24} color="#FFFFFF" />
+            </View>
+            {/* Timer + status below blob */}
+            <View style={st.blobInfo}>
+              <Text style={st.blobTimer}>{formatTime(voiceTimer)}</Text>
               {voiceError ? (
-                <Text style={st.voiceErrorCompact} numberOfLines={1}>{voiceError}</Text>
+                <Text style={st.blobError} numberOfLines={1}>{voiceError}</Text>
               ) : null}
             </View>
           </View>
@@ -996,7 +1036,7 @@ export function AIChatScreen() {
           {/* ---- Divider ---- */}
           <View style={st.voiceDivider} />
 
-          {/* ---- Scrollable widget panel ---- */}
+          {/* ---- Scrollable widget panel (majority of screen) ---- */}
           <ScrollView
             style={st.flex1}
             contentContainerStyle={st.voiceWidgetContent}
@@ -1020,23 +1060,6 @@ export function AIChatScreen() {
                 </Text>
               </View>
             )}
-
-            {/* Full conversation transcript at bottom */}
-            {convaiMessages.length > 0 ? (
-              <View style={st.voiceTranscriptSection}>
-                <Text style={st.voiceTranscriptSectionTitle}>Conversation</Text>
-                {convaiMessages.map((msg, i) => (
-                  <View key={i} style={msg.source === 'user' ? st.voiceTranscriptUserRow : st.voiceTranscriptAgentRow}>
-                    <Text style={msg.source === 'user' ? st.voiceTranscriptUserLabel : st.voiceTranscriptAgentLabel}>
-                      {msg.source === 'user' ? 'You' : 'AI'}
-                    </Text>
-                    <Text style={msg.source === 'user' ? st.voiceTranscriptUserText : st.voiceTranscriptAgentText}>
-                      {msg.text}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -1440,14 +1463,13 @@ const st = StyleSheet.create({
   voiceHeaderRowSub: { fontSize: 12, color: '#64748B', marginTop: 1 },
   voiceHeaderActionBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 
-  voiceVisualizerCompact: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 14 },
-  voiceWaveOuterCompact: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#0369A120', alignItems: 'center', justifyContent: 'center' },
-  voiceWaveInnerCompact: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  voiceVisualizerInfo: { flex: 1, gap: 2 },
-  voiceTimerCompact: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  voiceSnippetUser: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic' },
-  voiceSnippetAgent: { fontSize: 13, color: '#22C55E', fontStyle: 'italic', lineHeight: 18 },
-  voiceErrorCompact: { fontSize: 12, color: '#EF4444' },
+  // --- Morphing blob styles ---
+  blobContainer: { alignItems: 'center', justifyContent: 'center', height: 140, position: 'relative' },
+  blobLayer: { position: 'absolute', width: 90, height: 90, borderRadius: 45 },
+  blobCenterIcon: { position: 'absolute', width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  blobInfo: { position: 'absolute', bottom: 4, alignItems: 'center' },
+  blobTimer: { fontSize: 14, fontWeight: '700', color: '#94A3B8' },
+  blobError: { fontSize: 11, color: '#EF4444', marginTop: 2 },
 
   voiceDivider: { height: 1, backgroundColor: '#1E3A5F', marginHorizontal: 16 },
 
@@ -1458,15 +1480,6 @@ const st = StyleSheet.create({
   voiceWidgetEmpty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 32 },
   voiceWidgetEmptyTitle: { fontSize: 16, fontWeight: '600', color: '#64748B', marginTop: 12 },
   voiceWidgetEmptyDesc: { fontSize: 13, color: '#475569', textAlign: 'center', lineHeight: 19, marginTop: 6 },
-
-  voiceTranscriptSection: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#1E3A5F' },
-  voiceTranscriptSectionTitle: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  voiceTranscriptUserRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
-  voiceTranscriptAgentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
-  voiceTranscriptUserLabel: { fontSize: 11, fontWeight: '700', color: '#0EA5E9', width: 28, paddingTop: 2 },
-  voiceTranscriptAgentLabel: { fontSize: 11, fontWeight: '700', color: '#22C55E', width: 28, paddingTop: 2 },
-  voiceTranscriptUserText: { flex: 1, fontSize: 13, color: '#CBD5E1', lineHeight: 18 },
-  voiceTranscriptAgentText: { flex: 1, fontSize: 13, color: '#E2E8F0', lineHeight: 18 },
   settingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   settingsTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   settingsTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1E3A5F' },
