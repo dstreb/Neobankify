@@ -5,16 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
+import { MOCK_ACCOUNTS, MOCK_CARDS } from '../../data/accounts';
 
-const MOCK_CARDS = [
-  { id: '1', name: 'swiftbank Platinum', type: 'Virtual', lastFour: '8812', balance: 1485.25, color: '#1E293B' },
-  { id: '2', name: 'swiftbank Gold', type: 'Physical', lastFour: '8812', balance: 500.00, color: '#D97706' },
-];
-
-const MOCK_ACCOUNTS = [
-  { id: '1', name: 'Personal', type: 'Checking', lastFour: '8815', balance: 4522.25 },
-  { id: '2', name: 'Savings', type: 'Savings', lastFour: '1179', balance: 8458.22 },
-];
+// Card colors derived locally (shared MockCard type doesn't include color)
+const CARD_COLORS: Record<string, string> = {
+  '1': '#1E293B',
+  '2': '#D97706',
+};
 
 export function WalletScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void } }) {
   const { theme } = useTheme();
@@ -48,7 +45,7 @@ export function WalletScreen({ navigation }: { navigation: { navigate: (screen: 
           {MOCK_CARDS.map((card) => (
             <TouchableOpacity
               key={card.id}
-              style={[styles.cardItem, { backgroundColor: card.color }]}
+              style={[styles.cardItem, { backgroundColor: CARD_COLORS[card.id] || '#1E293B' }]}
             >
               <View style={styles.cardTopRow}>
                 <Text style={styles.cardName}>{card.name}</Text>
