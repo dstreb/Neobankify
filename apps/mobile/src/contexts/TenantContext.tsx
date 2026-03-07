@@ -9,10 +9,10 @@ import { useTheme } from './ThemeContext';
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   rewardsEnabled: true,
-  idleCashEnabled: false,
-  investingEnabled: false,
-  tradingEnabled: false,
-  lendingEnabled: false,
+  idleCashEnabled: true,
+  investingEnabled: true,
+  tradingEnabled: true,
+  lendingEnabled: true,
   cardManagementEnabled: true,
   accountAggregationEnabled: true,
 };

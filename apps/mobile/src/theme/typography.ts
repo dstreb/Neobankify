@@ -1,10 +1,16 @@
 import { TextStyle } from 'react-native';
 
 // =====================================================
-// Typography System
+// Typography System - swiftbank UI Kit v1.1
+// Font: Inter (Google Font)
 // =====================================================
 
 export interface TypographyScale {
+  // Display sizes (swiftbank)
+  displayLg: TextStyle;
+  displayMd: TextStyle;
+  displaySm: TextStyle;
+  // Legacy aliases
   h1: TextStyle;
   h2: TextStyle;
   h3: TextStyle;
@@ -20,37 +26,60 @@ export interface TypographyScale {
   amountLarge: TextStyle;
 }
 
-const baseFontFamily = 'System';
+// Inter is the swiftbank design system font
+const baseFontFamily = 'Inter';
 
 export function createTypography(fontFamily?: string): TypographyScale {
   const family = fontFamily || baseFontFamily;
 
   return {
-    h1: {
+    // swiftbank display sizes
+    displayLg: {
       fontFamily: family,
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: '700',
-      lineHeight: 40,
+      lineHeight: 38,
       letterSpacing: -0.5,
     },
-    h2: {
-      fontFamily: family,
-      fontSize: 28,
-      fontWeight: '700',
-      lineHeight: 36,
-      letterSpacing: -0.3,
-    },
-    h3: {
+    displayMd: {
       fontFamily: family,
       fontSize: 24,
-      fontWeight: '600',
+      fontWeight: '700',
       lineHeight: 32,
+      letterSpacing: -0.3,
     },
-    h4: {
+    displaySm: {
       fontFamily: family,
       fontSize: 20,
       fontWeight: '600',
       lineHeight: 28,
+    },
+    // Legacy aliases mapped to swiftbank scale
+    h1: {
+      fontFamily: family,
+      fontSize: 30,
+      fontWeight: '700',
+      lineHeight: 38,
+      letterSpacing: -0.5,
+    },
+    h2: {
+      fontFamily: family,
+      fontSize: 24,
+      fontWeight: '700',
+      lineHeight: 32,
+      letterSpacing: -0.3,
+    },
+    h3: {
+      fontFamily: family,
+      fontSize: 20,
+      fontWeight: '600',
+      lineHeight: 28,
+    },
+    h4: {
+      fontFamily: family,
+      fontSize: 18,
+      fontWeight: '600',
+      lineHeight: 26,
     },
     subtitle1: {
       fontFamily: family,
@@ -106,9 +135,9 @@ export function createTypography(fontFamily?: string): TypographyScale {
     },
     amountLarge: {
       fontFamily: family,
-      fontSize: 36,
+      fontSize: 30,
       fontWeight: '700',
-      lineHeight: 44,
+      lineHeight: 38,
       fontVariant: ['tabular-nums'],
     },
   };

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import type { ProfileScreenProps } from '../../types/navigation';
@@ -21,10 +22,24 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: 'link-outline', label: 'Linked Accounts', screen: 'LinkedAccounts' },
 ];
 
-export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>) {
+interface WealthItem extends MenuItem {
+  flag: 'rewardsEnabled' | 'investingEnabled' | 'tradingEnabled' | 'lendingEnabled';
+}
+
+const ALL_WEALTH_ITEMS: WealthItem[] = [
+  { icon: 'gift-outline', label: 'Rewards', screen: 'RewardsSummary', flag: 'rewardsEnabled' },
+  { icon: 'trending-up-outline', label: 'Investing', screen: 'InvestingDashboard', flag: 'investingEnabled' },
+  { icon: 'bar-chart-outline', label: 'Trading', screen: 'TradingDashboard', flag: 'tradingEnabled' },
+  { icon: 'cash-outline', label: 'Lending', screen: 'LendingDashboard', flag: 'lendingEnabled' },
+];
+
+export function ProfileScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void; goBack: () => void } }) {
   const { theme, isDark, toggleTheme } = useTheme();
   const { colors, spacing } = theme;
   const { user, logout } = useAuth();
+  const { featureFlags } = useTenant();
+
+  const wealthItems = ALL_WEALTH_ITEMS.filter((item) => featureFlags[item.flag]);
 
   const handleLogout = async () => {
     try {
@@ -36,6 +51,18 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Back button header */}
+      <View style={[styles.backHeader, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.backHeaderTitle, { color: colors.textPrimary }]}>Profile</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Info */}
         <View style={styles.userSection}>
@@ -107,6 +134,31 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
           ))}
         </Card>
 
+        {/* Wealth & Features */}
+        {wealthItems.length > 0 && (
+          <Card style={{ marginBottom: spacing.lg }} padding="none">
+            {wealthItems.map((item, index) => (
+              <React.Fragment key={item.screen}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => navigation.navigate(item.screen as never)}
+                >
+                  <View style={styles.menuLeft}>
+                    <Ionicons name={item.icon} size={22} color={colors.primary} />
+                    <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
+                  </View>
+                  <View style={styles.menuRight}>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                  </View>
+                </TouchableOpacity>
+                {index < wealthItems.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
+                )}
+              </React.Fragment>
+            ))}
+          </Card>
+        )}
+
         {/* Logout */}
         <Button
           title="Sign Out"
@@ -125,6 +177,24 @@ export function ProfileScreen({ navigation }: ProfileScreenProps<'ProfileMain'>)
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  backHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
   content: { padding: 16, paddingBottom: 32 },
   userSection: {
     alignItems: 'center',

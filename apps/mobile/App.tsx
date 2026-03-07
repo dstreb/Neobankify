@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -7,8 +7,10 @@ import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { TenantProvider } from './src/contexts/TenantContext';
 import { AIProvider } from './src/contexts/AIContext';
+import { SavingsPotsProvider } from './src/contexts/SavingsPotsContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useTheme } from './src/contexts/ThemeContext';
+import { setupElevenLabs } from './src/config/elevenlabs';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +21,21 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Try to initialize ElevenLabs from env/config at module load.
+// If no key is available yet, users can enter it in Chat Settings.
+// NOTE: Expo web requires EXPO_PUBLIC_ prefix for client-side env vars.
+try {
+  // @ts-ignore — process.env may not exist in all RN environments
+  const envKey =
+    (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_ELEVENLABS_API_KEY) ||
+    (typeof process !== 'undefined' && process.env?.ELEVENLABS_API_KEY);
+  if (envKey) {
+    setupElevenLabs(envKey);
+  }
+} catch {
+  // Silently ignore — user can configure in settings
+}
 
 function AppContent() {
   const { isDark } = useTheme();
@@ -41,7 +58,9 @@ export default function App() {
           <TenantProvider>
             <AuthProvider>
               <AIProvider>
-                <AppContent />
+                <SavingsPotsProvider>
+                  <AppContent />
+                </SavingsPotsProvider>
               </AIProvider>
             </AuthProvider>
           </TenantProvider>

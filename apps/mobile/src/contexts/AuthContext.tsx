@@ -31,15 +31,18 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  // DEMO MODE: bypass auth for Expo web testing (no backend)
+  const DEMO_MODE = true;
   const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-    isOnboardingComplete: false,
+    user: DEMO_MODE ? { id: 'demo-1', email: 'demo@neobank.com', firstName: 'Demo', lastName: 'User', kycStatus: 'approved' } as User : null,
+    isAuthenticated: DEMO_MODE,
+    isLoading: !DEMO_MODE,
+    isOnboardingComplete: DEMO_MODE,
   });
 
   // Check for existing session on mount
   useEffect(() => {
+    if (DEMO_MODE) return;
     const checkSession = async () => {
       try {
         const token = await storage.getAccessToken();
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for session-expired events from the API client
   useEffect(() => {
+    if (DEMO_MODE) return;
     const unsubscribe = onSessionExpired(() => {
       setState({
         user: null,

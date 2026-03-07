@@ -20,24 +20,103 @@ export type OnboardingStackParamList = {
 };
 
 export type MainTabParamList = {
-  Dashboard: undefined;
-  Cards: undefined;
+  Home: undefined;
+  Offers: undefined;
   AI: undefined;
-  Rewards: undefined;
-  Investing: undefined;
-  Trading: undefined;
-  Lending: undefined;
-  Transactions: undefined;
-  Profile: undefined;
+  Wallet: undefined;
+  History: undefined;
 };
 
 export type AIStackParamList = {
   AIChat: undefined;
 };
 
+export type OffersStackParamList = {
+  OffersHome: undefined;
+  ProfileMain: undefined;
+  AddAccount: undefined;
+  SavingsPots: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
+};
+
+export type WalletStackParamList = {
+  WalletHome: undefined;
+  Payments: { flow?: string } | undefined;
+  ProfileMain: undefined;
+  AddAccount: undefined;
+  SavingsPots: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
+};
+
+export type HistoryStackParamList = {
+  HistoryHome: undefined;
+  ProfileMain: undefined;
+  TransactionDetail: { transactionId: string };
+  AddAccount: undefined;
+  SavingsPots: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Wealth screens accessible from Profile
+  RewardsSummary: undefined;
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
+};
+
 export type HomeStackParamList = {
   DashboardHome: undefined;
   NotificationsList: undefined;
+  ProfileMain: undefined;
+  AddAccount: undefined;
+  SavingsPots: undefined;
+  // Profile sub-screens
+  Security: undefined;
+  Notifications: undefined;
+  LinkedAccounts: undefined;
+  // Sub-features accessible from Home
+  RewardsSummary: undefined;
+  RewardsHistory: undefined;
+  OffersList: undefined;
+  RecommendationDetail: { recommendationId: string };
+  InvestingDashboard: undefined;
+  SuitabilityAssessment: undefined;
+  HoldingDetail: { holdingId: string };
+  InvestingOrder: { side?: string };
+  InvestingSettings: undefined;
+  TradingDashboard: undefined;
+  TradeOrder: { side?: string };
+  PositionDetail: { positionId: string };
+  AISignals: undefined;
+  PaperTrading: undefined;
+  LendingDashboard: undefined;
+  LoanApplication: undefined;
+  LoanDetail: { loanId: string };
+  MakePayment: { loanId?: string };
+  // Transaction detail accessible from dashboard
+  TransactionDetail: { transactionId: string };
+};
+
+export type PaymentsStackParamList = {
+  TransactionList: undefined;
+  TransactionDetail: { transactionId: string };
 };
 
 export type CardsStackParamList = {
@@ -63,6 +142,14 @@ export type ProfileStackParamList = {
   Security: undefined;
   Notifications: undefined;
   LinkedAccounts: undefined;
+  // Sub-features accessible from Profile
+  RewardsSummary: undefined;
+  RewardsHistory: undefined;
+  OffersList: undefined;
+  RecommendationDetail: { recommendationId: string };
+  InvestingDashboard: undefined;
+  TradingDashboard: undefined;
+  LendingDashboard: undefined;
 };
 
 export type InvestingStackParamList = {
