@@ -1109,7 +1109,7 @@ export function SavingsPotsScreen({ navigation }: { navigation: { goBack: () => 
               <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
               <Text style={s.updateBtnText}>{isProcessing ? 'Updating...' : 'Update Savings Pot'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.deleteBtn} onPress={() => setStep('pot_delete_confirm')}>
+            <TouchableOpacity style={s.deleteBtn} onPress={() => { setDeleteError(''); setStep('pot_delete_confirm'); }}>
               <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
               <Text style={s.deleteBtnText}>Delete Savings Pot</Text>
             </TouchableOpacity>
