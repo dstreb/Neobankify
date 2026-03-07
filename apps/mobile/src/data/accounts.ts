@@ -113,5 +113,6 @@ export function getConsolidatedBalance(accounts: MockAccount[] = MOCK_ACCOUNTS):
 
 /** Format a number as USD currency */
 export function formatUSD(amount: number): string {
-  return `$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
