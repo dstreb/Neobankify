@@ -134,6 +134,8 @@ export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
   ) => (val: string) => {
     if (val === 'backspace') {
       setter((prev) => prev.slice(0, -1) || '0.00');
+    } else if (val === '.') {
+      setter((prev) => (prev === '0.00' ? '0.' : prev.includes('.') ? prev : prev + '.'));
     } else {
       setter((prev) => (prev === '0.00' ? val : prev + val));
     }

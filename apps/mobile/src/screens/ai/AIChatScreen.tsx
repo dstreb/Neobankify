@@ -40,6 +40,7 @@ import {
   isConversationActive,
 } from '../../services/conversationalAI';
 import { buildAgentSystemPrompt } from '../../data/financialContext';
+import { useSavingsPots } from '../../contexts/SavingsPotsContext';
 
 // =====================================================
 // AI Banking Assistant - Full-Featured Chat Screen
@@ -79,6 +80,7 @@ const VOICE_OPTIONS = [
 export function AIChatScreen() {
   const { theme } = useTheme();
   const { colors } = theme;
+  const { pots } = useSavingsPots();
 
   const [step, setStep] = useState<ScreenStep>('onboarding_welcome');
   const [messages, setMessages] = useState<AIChatMsg[]>([]);
@@ -209,7 +211,7 @@ export function AIChatScreen() {
     try {
       const agentId = getAgentId();
       // Build dynamic financial context for the agent
-      const systemPrompt = buildAgentSystemPrompt();
+      const systemPrompt = buildAgentSystemPrompt(pots);
       // NOTE: firstMessage override is not used because the agent's security
       // settings don't allow it. Financial context is injected via
       // sendContextualUpdate() instead (see conversationalAI.ts).
@@ -261,7 +263,7 @@ export function AIChatScreen() {
       setVoiceRecording(false);
       setConvaiStatus('idle');
     }
-  }, []);
+  }, [pots]);
 
   // End the Conversational AI session and return to chat
   const handleVoiceSend = useCallback(async () => {
