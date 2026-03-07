@@ -105,19 +105,19 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
       </Text>
 
       <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickActionBtn}>
+        <TouchableOpacity style={styles.quickActionBtn} onPress={() => navigation.navigate('Wallet', { screen: 'Payments', params: { flow: 'deposit' } })}>
           <View style={styles.quickActionIcon}>
             <Ionicons name="arrow-down-outline" size={22} color="#FFFFFF" />
           </View>
           <Text style={styles.quickActionLabel}>Deposit</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionBtn}>
+        <TouchableOpacity style={styles.quickActionBtn} onPress={() => navigation.navigate('Wallet', { screen: 'Payments', params: { flow: 'withdraw' } })}>
           <View style={styles.quickActionIcon}>
             <Ionicons name="arrow-up-outline" size={22} color="#FFFFFF" />
           </View>
           <Text style={styles.quickActionLabel}>Withdraw</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionBtn}>
+        <TouchableOpacity style={styles.quickActionBtn} onPress={() => navigation.navigate('Wallet', { screen: 'Payments', params: { flow: 'transfer' } })}>
           <View style={styles.quickActionIcon}>
             <Ionicons name="swap-horizontal-outline" size={22} color="#FFFFFF" />
           </View>
@@ -221,7 +221,7 @@ export function DashboardScreen({ navigation }: { navigation: { navigate: (scree
             <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
               Please make a transaction in order to see your latest activity
             </Text>
-            <TouchableOpacity style={[styles.emptyButton, { borderColor: colors.primary }]}>
+            <TouchableOpacity style={[styles.emptyButton, { borderColor: colors.primary }]} onPress={() => navigation.navigate('Wallet', { screen: 'Payments' })}>
               <Text style={[styles.emptyButtonText, { color: colors.primary }]}>Make Payment</Text>
             </TouchableOpacity>
           </View>
