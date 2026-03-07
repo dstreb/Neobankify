@@ -210,7 +210,9 @@ export function AIChatScreen() {
       const agentId = getAgentId();
       // Build dynamic financial context for the agent
       const systemPrompt = buildAgentSystemPrompt();
-      const firstMessage = buildAgentFirstMessage();
+      // NOTE: firstMessage override is not used because the agent's security
+      // settings don't allow it. Financial context is injected via
+      // sendContextualUpdate() instead (see conversationalAI.ts).
       await startConversation(agentId, {
         onStatusChange: (status) => {
           setConvaiStatus(status as 'connecting' | 'connected' | 'disconnected');

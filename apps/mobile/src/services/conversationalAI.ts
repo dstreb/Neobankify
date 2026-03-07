@@ -29,13 +29,15 @@ export interface ConversationCallbacks {
 /**
  * Overrides to customize the agent's behavior per-conversation.
  * Allows injecting dynamic user data (account balances, transactions, etc.)
- * into the agent's system prompt and first message.
+ * via sendContextualUpdate() after connection.
+ *
+ * NOTE: Direct overrides (systemPrompt, firstMessage) in startSession()
+ * require the agent's security settings to explicitly allow them. We use
+ * sendContextualUpdate() instead, which doesn't require security overrides.
  */
 export interface ConversationOverrides {
-  /** Override the agent's system prompt (e.g., inject financial data) */
+  /** Financial context to inject via sendContextualUpdate() after connection */
   systemPrompt?: string;
-  /** Override the agent's first message (e.g., personalized greeting) */
-  firstMessage?: string;
 }
 
 let _activeConversation: typeof Conversation.prototype | null = null;
