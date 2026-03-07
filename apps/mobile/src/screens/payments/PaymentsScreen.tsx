@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -96,6 +96,16 @@ export function PaymentsScreen({ navigation, route }: PaymentsScreenProps) {
   const [step, setStep] = useState<Step>(
     (initialFlow && FLOW_ENTRY_STEPS[initialFlow]) || 'hub',
   );
+
+  // When navigating back to this screen with a new flow param (e.g. from
+  // Dashboard quick-actions), React Navigation reuses the mounted instance so
+  // useState's initial value is ignored.  This effect keeps step in sync.
+  useEffect(() => {
+    const flow = route?.params?.flow;
+    if (flow && FLOW_ENTRY_STEPS[flow]) {
+      setStep(FLOW_ENTRY_STEPS[flow]);
+    }
+  }, [route?.params?.flow]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Convert flow
