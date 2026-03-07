@@ -24,9 +24,12 @@ const queryClient = new QueryClient({
 
 // Try to initialize ElevenLabs from env/config at module load.
 // If no key is available yet, users can enter it in Chat Settings.
+// NOTE: Expo web requires EXPO_PUBLIC_ prefix for client-side env vars.
 try {
   // @ts-ignore — process.env may not exist in all RN environments
-  const envKey = typeof process !== 'undefined' && process.env?.ELEVENLABS_API_KEY;
+  const envKey =
+    (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_ELEVENLABS_API_KEY) ||
+    (typeof process !== 'undefined' && process.env?.ELEVENLABS_API_KEY);
   if (envKey) {
     setupElevenLabs(envKey);
   }
